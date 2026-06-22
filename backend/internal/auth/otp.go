@@ -1,0 +1,155 @@
+package auth
+
+import (
+	"context"
+	"crypto/rand"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/ishchibormi/backend/internal/models"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+type OTPRepo struct {
+	Col *mongo.Collection
+	TTL time.Duration
+	Len int
+}
+
+func NewOTPRepo(db *mongo.Database, ttl time.Duration, length int) *OTPRepo {
+	return &OTPRepo{Col: db.Collection("otp_codes"), TTL: ttl, Len: length}
+}
+
+// RequestToken creates a fresh tgToken (used as Telegram deep-link payload).
+// The bot, on /start <token>, fills in the user's telegramId/phone and the OTP code.
+func (r *OTPRepo) RequestToken(ctx context.Context) (string, error) {
+	tok := randHex(16)
+	_, err := r.Col.InsertOne(ctx, models.OTPCode{
+		TGToken:   tok,
+		ExpiresAt: time.Now().Add(r.TTL),
+		CreatedAt: time.Now(),
+	})
+	return tok, err
+}
+
+// BindPhoneAndIssueCode is called by the bot. It finds the most recent unused
+// record matching the token (or creates one if the bot was opened directly),
+// then generates an OTP code and persists it.
+func (r *OTPRepo) BindPhoneAndIssueCode(ctx context.Context, token, phone string, tgID int64) (string, error) {
+	code, err := randDigits(r.Len)
+	if err != nil {
+		return "", err
+	}
+	now := time.Now()
+	if token != "" {
+		res := r.Col.FindOneAndUpdate(ctx,
+			bson.M{"tgToken": token, "used": false, "expiresAt": bson.M{"$gt": now}},
+			bson.M{"$set": bson.M{
+				"phone":      phone,
+				"telegramId": tgID,
+				"code":       code,
+				"expiresAt":  now.Add(r.TTL),
+			}})
+		if res.Err() == nil {
+			return code, nil
+		}
+		// fallthrough: insert new (bot opened without token)
+	}
+	_, err = r.Col.InsertOne(ctx, models.OTPCode{
+		TGToken:    "",
+		Phone:      phone,
+		TelegramID: tgID,
+		Code:       code,
+		ExpiresAt:  now.Add(r.TTL),
+		CreatedAt:  now,
+	})
+	return code, err
+}
+
+// VerifyByToken: web-side verification using token + code, returns the bound (phone, tgID).
+func (r *OTPRepo) VerifyByToken(ctx context.Context, token, code string) (string, int64, error) {
+	now := time.Now()
+	res := r.Col.FindOneAndUpdate(ctx,
+		bson.M{"tgToken": token, "code": code, "used": false, "expiresAt": bson.M{"$gt": now}},
+		bson.M{"$set": bson.M{"used": true}})
+	if err := res.Err(); err != nil {
+		return "", 0, errors.New("invalid_or_expired_code")
+	}
+	var doc models.OTPCode
+	if err := res.Decode(&doc); err != nil {
+		return "", 0, err
+	}
+	return doc.Phone, doc.TelegramID, nil
+}
+
+// VerifyByPhone: alternative verification path (when web has no token).
+func (r *OTPRepo) VerifyByPhone(ctx context.Context, phone, code string) (string, int64, error) {
+	now := time.Now()
+	res := r.Col.FindOneAndUpdate(ctx,
+		bson.M{"phone": phone, "code": code, "used": false, "expiresAt": bson.M{"$gt": now}},
+		bson.M{"$set": bson.M{"used": true}})
+	if err := res.Err(); err != nil {
+		return "", 0, errors.New("invalid_or_expired_code")
+	}
+	var doc models.OTPCode
+	if err := res.Decode(&doc); err != nil {
+		return "", 0, err
+	}
+	return doc.Phone, doc.TelegramID, nil
+}
+
+// VerifyByCode: fallback path that matches the most recent unused record by
+// code only. Covers the case where the user typed /start in the bot without
+// the deep-link token, or the Telegram client didn't pass the start argument.
+// We still require the bot to have written a phone+code pair, so the record
+// must have a non-empty phone.
+func (r *OTPRepo) VerifyByCode(ctx context.Context, code string) (string, int64, error) {
+	now := time.Now()
+	opts := options.FindOneAndUpdate().SetSort(bson.D{{Key: "createdAt", Value: -1}})
+	res := r.Col.FindOneAndUpdate(ctx,
+		bson.M{"code": code, "used": false, "expiresAt": bson.M{"$gt": now}, "phone": bson.M{"$ne": ""}},
+		bson.M{"$set": bson.M{"used": true}},
+		opts,
+	)
+	if err := res.Err(); err != nil {
+		return "", 0, errors.New("invalid_or_expired_code")
+	}
+	var doc models.OTPCode
+	if err := res.Decode(&doc); err != nil {
+		return "", 0, err
+	}
+	return doc.Phone, doc.TelegramID, nil
+}
+
+// LatestForToken returns the most recent code for a given token (dev mode helper).
+func (r *OTPRepo) LatestForToken(ctx context.Context, token string) (*models.OTPCode, error) {
+	var doc models.OTPCode
+	err := r.Col.FindOne(ctx, bson.M{"tgToken": token}).Decode(&doc)
+	if err != nil {
+		return nil, err
+	}
+	return &doc, nil
+}
+
+func randHex(n int) string {
+	b := make([]byte, n)
+	_, _ = rand.Read(b)
+	return fmt.Sprintf("%x", b)
+}
+
+func randDigits(n int) (string, error) {
+	digits := "0123456789"
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	var sb strings.Builder
+	for _, x := range b {
+		sb.WriteByte(digits[int(x)%len(digits)])
+	}
+	return sb.String(), nil
+}
