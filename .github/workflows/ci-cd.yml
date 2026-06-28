@@ -1,0 +1,103 @@
+name: CI/CD
+
+# Qachon ishga tushadi:
+#  - main branch'ga push bo'lganda  -> test + deploy
+#  - Pull Request ochilganda        -> faqat test (deploy yo'q)
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Bir vaqtning o'zida faqat bitta deploy ishlasin (eskisi to'xtatiladi)
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ───────────────────────────────────────────────
+  # 1) CI: kod sifatini tekshirish (test + lint)
+  # ───────────────────────────────────────────────
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kodni yuklab olish
+        uses: actions/checkout@v4
+
+      # --- Go (backend + bot) ---
+      - name: Go o'rnatish
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+          cache-dependency-path: |
+            backend/go.sum
+            bot/go.sum
+
+      - name: Backend - vet & test
+        working-directory: backend
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: Bot - vet & test
+        working-directory: bot
+        run: |
+          go vet ./...
+          go test ./...
+
+      # --- Frontend (Next.js) ---
+      - name: Node o'rnatish
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend - install
+        working-directory: frontend
+        run: npm ci
+
+      - name: Frontend - lint
+        working-directory: frontend
+        run: npm run lint --if-present
+
+      - name: Frontend - build (xatolarni erta tutish uchun)
+        working-directory: frontend
+        run: npm run build --if-present
+
+  # ───────────────────────────────────────────────
+  # 2) CD: EC2 serverga deploy
+  #    Faqat main'ga push bo'lganda VA test o'tgandan keyin
+  # ───────────────────────────────────────────────
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: EC2'ga SSH orqali deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          command_timeout: "20m"
+          script: |
+            set -e
+            cd ${{ secrets.PROJECT_DIR }}
+
+            echo "==> Eng so'nggi kodni tortib olish"
+            git fetch --all
+            git reset --hard origin/main
+
+            echo "==> Konteynerlarni qayta build qilib ishga tushirish"
+            docker compose up --build -d --remove-orphans
+
+            echo "==> Eski image'larni tozalash"
+            docker image prune -f
+
+            echo "==> Holat"
+            docker compose ps
