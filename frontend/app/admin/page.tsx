@@ -6,11 +6,10 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
   useEffect(() => { api.get<any>("/api/admin/dashboard", { auth: "admin" } as any).then(setStats); }, []);
   return (
-    <div className="grid sm:grid-cols-4 gap-3">
+    <div className="grid sm:grid-cols-3 gap-3">
       <Card label="Foydalanuvchilar" value={stats?.users ?? "—"} />
       <Card label="E'lonlar" value={stats?.elons ?? "—"} />
       <Card label="Bajarilgan ishlar" value={stats?.completed ?? "—"} />
-      <Card label="Aylanma (so'm)" value={(stats?.circulated ?? 0).toLocaleString("uz-UZ")} />
     </div>
   );
 }

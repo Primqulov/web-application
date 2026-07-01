@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { Select } from "@/components/ui/Input";
 import { Avatar } from "@/components/ui/Avatar";
+import { ShareModal } from "@/components/ShareModal";
 import { T, useT } from "@/components/T";
 import { fmtSumSom, fromNow } from "@/lib/format";
 
@@ -94,7 +95,9 @@ function Chip({ active, onClick, children }: { active?: boolean; onClick: () => 
 
 function JobCard({ e }: { e: Elon }) {
   const neg = e.pricingType === "negotiable";
+  const [shareOpen, setShareOpen] = useState(false);
   return (
+    <>
     <Link href={`/elon/${e.id}`} className="card p-5 block transition hover:-translate-y-0.5 hover:shadow-pop animate-fade-in">
       <div className="flex items-start gap-3">
         <Avatar name={e.ownerName} size="md" />
@@ -102,7 +105,7 @@ function JobCard({ e }: { e: Elon }) {
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-semibold heading leading-tight line-clamp-1"><T>{e.title}</T></h3>
             <button
-              onClick={(ev) => { ev.preventDefault(); navigator.share?.({ url: location.origin + `/elon/${e.id}`, title: e.title }).catch(() => {}); }}
+              onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setShareOpen(true); }}
               className="muted hover:text-accent-amber transition"
             >
               <Share2 size={16} />
@@ -143,5 +146,7 @@ function JobCard({ e }: { e: Elon }) {
         </span>
       </div>
     </Link>
+    <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} path={`/elon/${e.id}`} title={e.title} />
+    </>
   );
 }

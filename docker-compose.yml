@@ -1,12 +1,12 @@
-version: "3.9"
-
 services:
   mongo:
     image: mongo:7
     container_name: ib_mongo
     restart: unless-stopped
+    # Xost 27017 da Windows MongoDB xizmati ishlayotgani uchun to'qnashmaslik
+    # maqsadida Docker Mongo xostda 27018 ga chiqariladi (ichkarida esa 27017).
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -28,11 +28,12 @@ services:
       - "8080:8080"
     env_file: .env
     environment:
-      MONGO_URI: mongodb://mongo:27017
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017}
       MONGO_DB: ${MONGO_DB:-ishchibormi}
       HTTP_ADDR: ":8080"
     volumes:
       - avatars:/data/avatars
+      - uploads:/app/data/uploads
 
   bot:
     build:
@@ -45,8 +46,25 @@ services:
         condition: service_healthy
     env_file: .env
     environment:
-      MONGO_URI: mongodb://mongo:27017
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017}
       MONGO_DB: ${MONGO_DB:-ishchibormi}
+
+  # Taklif/shikoyat botlari (foydalanuvchi qabul boti + admin javob boti)
+  # bitta jarayonda ishlaydi. Bot image'idagi ikkinchi binardan foydalanadi.
+  feedbackbot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    container_name: ib_feedbackbot
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017}
+      MONGO_DB: ${MONGO_DB:-ishchibormi}
+    entrypoint: ["/app/feedbackbot"]
 
   frontend:
     build:
@@ -67,3 +85,4 @@ services:
 volumes:
   mongo_data:
   avatars:
+  uploads:

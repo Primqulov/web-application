@@ -53,8 +53,3 @@ uploads/
 tmp/
 *.zip
 *.tar.gz
-
-# ── Secrets / SSH kalitlar (HECH QACHON commit qilinmasin) ──
-*.pem
-*.key
-*.ppk

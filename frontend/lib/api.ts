@@ -90,6 +90,10 @@ export interface User {
   skills?: string[];
   rating: number;
   reviewsCount: number;
+  workerRating?: number;
+  workerReviewsCount?: number;
+  employerRating?: number;
+  employerReviewsCount?: number;
   completedJobsCount: number;
   isPhoneVerified: boolean;
   isPremium: boolean;
@@ -115,6 +119,8 @@ export interface Elon {
   description: string;
   locationUrl?: string;
   locationText?: string;
+  lat?: number;
+  lng?: number;
   region?: string;
   district?: string;
   workersNeeded: number;
@@ -159,50 +165,16 @@ export interface Notification {
   createdAt: string;
   relatedEntity?: { type: string; id: ID };
 }
-export interface Conversation {
-  id: ID;
-  participantIds: ID[];
-  lastMessageText: string;
-  lastMessageAt: string;
-  lastSenderId?: ID;
-  unread: Record<string, number>;
-}
-export interface MessageAttachment {
-  url: string;
-  name?: string;
-  size?: number;
-  mime?: string;
-}
-export interface Message {
-  id: ID;
-  conversationId: ID;
-  senderId: ID;
-  text: string;
-  attachments?: MessageAttachment[];
-  isRead: boolean;
-  createdAt: string;
-}
-export interface FinanceEntry {
+export interface Feedback {
   id: ID;
   userId: ID;
-  role: "worker" | "employer";
-  applicationId: ID;
-  elonId: ID;
-  elonTitle: string;
-  counterpartyId: ID;
-  type: "earned" | "spent";
-  status: "completed" | "cancelled";
-  amount: number;
-  isNegotiable: boolean;
+  userName?: string;
+  userPhone?: string;
+  type: "suggestion" | "complaint";
+  subject?: string;
+  message: string;
+  status: "open" | "resolved";
   createdAt: string;
-}
-export interface FinanceSummary {
-  earnedSum: number;
-  spentSum: number;
-  completedCount: number;
-  negotiableCount: number;
-  cancelledCount: number;
-  entries: FinanceEntry[];
 }
 export interface Review {
   id: ID;

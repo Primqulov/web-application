@@ -4,9 +4,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  LayoutGrid, ListChecks, Briefcase, MessageSquare, History, Wallet,
-  Bell, Settings, User as UserIcon, PlusCircle, LogOut, Bell as BellIcon,
-  Menu, X, Search,
+  LayoutGrid, ListChecks, Briefcase, History,
+  Settings, User as UserIcon, PlusCircle, LogOut, Bell as BellIcon,
+  MessageSquareWarning, Menu, Search,
 } from "lucide-react";
 import { api, getAccess, Notification, setAccess, setRefresh, User } from "@/lib/api";
 import { T, useT } from "@/components/T";
@@ -18,10 +18,8 @@ const NAV: { href: string; label: string; icon: any }[] = [
   { href: "/dashboard",     label: "Bosh sahifa",         icon: LayoutGrid },
   { href: "/my-elons",      label: "Mening e'lonlarim",   icon: ListChecks },
   { href: "/process",       label: "Jarayonlar",          icon: Briefcase },
-  { href: "/chat",          label: "Xabarlar",            icon: MessageSquare },
   { href: "/history",       label: "Ishlar tarixi",       icon: History },
-  { href: "/finance",       label: "Moliya",              icon: Wallet },
-  { href: "/notifications", label: "Bildirishnomalar",    icon: Bell },
+  { href: "/feedback",      label: "Taklif va shikoyatlar", icon: MessageSquareWarning },
   { href: "/settings",      label: "Sozlamalar",          icon: Settings },
   { href: "/profile",       label: "Profil",              icon: UserIcon },
 ];
@@ -125,7 +123,7 @@ export function Shell({ title, search, children }: { title: string; search?: Rea
             <button onClick={() => setDrawer(true)} className="md:hidden p-2 rounded-lg hover:bg-[color:var(--bg-subtle)]">
               <Menu size={18} />
             </button>
-            <h1 className="text-lg sm:text-xl font-bold heading leading-tight"><T>{title}</T></h1>
+            <h1 className="text-lg sm:text-xl font-bold heading leading-tight truncate min-w-0"><T>{title}</T></h1>
             {search && <div className="hidden md:block flex-1 max-w-md mx-2">{search}</div>}
             <div className="ml-auto flex items-center gap-2">
               <ScriptToggle />

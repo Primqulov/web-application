@@ -16,23 +16,27 @@ export default function AdminUsers() {
     load();
   }
   return (
-    <div className="card p-4 overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead><tr className="text-left text-[color:var(--text-muted)]"><th className="py-2">Ism</th><th>Telefon</th><th>Viloyat</th><th>Reyting</th><th>Holat</th><th></th></tr></thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u.id} className="border-t" style={{ borderColor: "var(--border)" }}>
-              <td className="py-2">{u.firstName} {u.lastName}</td>
-              <td>{u.phone}</td><td>{u.region}</td><td>{u.rating.toFixed(1)}</td>
-              <td>{u.isBlocked ? <span className="text-danger">bloklangan</span> : "faol"}</td>
-              <td className="text-right">
-                <button onClick={() => block(u.id, !u.isBlocked)} className="btn-secondary mr-2">{u.isBlocked ? "Ochish" : "Bloklash"}</button>
-                <button onClick={() => del(u.id)} className="btn-danger">O'chirish</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="card p-4">
+      <div className="-mx-4 px-4 overflow-x-auto scroll-y-auto">
+        <table className="w-full min-w-[720px] text-sm">
+          <thead><tr className="text-left text-[color:var(--text-muted)]"><th className="py-2">Ism</th><th>Telefon</th><th>Viloyat</th><th>Reyting</th><th>Holat</th><th></th></tr></thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id} className="border-t" style={{ borderColor: "var(--border)" }}>
+                <td className="py-2 whitespace-nowrap">{u.firstName} {u.lastName}</td>
+                <td className="whitespace-nowrap">{u.phone}</td><td>{u.region}</td><td>{u.rating.toFixed(1)}</td>
+                <td>{u.isBlocked ? <span className="text-danger">bloklangan</span> : "faol"}</td>
+                <td>
+                  <div className="flex flex-wrap gap-2 justify-end">
+                    <button onClick={() => block(u.id, !u.isBlocked)} className="btn-secondary btn-sm">{u.isBlocked ? "Ochish" : "Bloklash"}</button>
+                    <button onClick={() => del(u.id)} className="btn-danger btn-sm">O'chirish</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

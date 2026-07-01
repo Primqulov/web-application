@@ -1,7 +1,7 @@
 "use client";
 import { API_BASE, getAccess } from "@/lib/api";
 
-export type UploadKind = "avatar" | "elon" | "chat";
+export type UploadKind = "avatar" | "elon";
 
 export interface UploadedFile {
   key: string;
@@ -9,7 +9,7 @@ export interface UploadedFile {
 }
 
 export interface UploadOpts {
-  scope?: string;                   // e.g. an elon id, conversation id
+  scope?: string;                   // e.g. an elon id
   onProgress?: (pct: number) => void;
 }
 

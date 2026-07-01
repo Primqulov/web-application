@@ -100,18 +100,20 @@ export function MultiImageUploader({ value, onChange, max = 6, kind = "elon", sc
   async function handle(files: FileList | null) {
     if (!files) return;
     setErr("");
-    const arr = Array.from(files).slice(0, max - value.length);
-    if (arr.length === 0) return;
+    const remaining = max - value.length;
+    if (remaining <= 0) { setErr(`Maksimal ${max} ta rasm qo'shish mumkin.`); return; }
+    const arr = Array.from(files).slice(0, remaining);
     setBusy(true);
     const next = [...value];
     for (const f of arr) {
-      if (!f.type.startsWith("image/")) continue;
+      if (!f.type.startsWith("image/")) { setErr("Faqat rasm fayllari qabul qilinadi (JPG, PNG, WebP)."); continue; }
+      if (f.size > 8 * 1024 * 1024) { setErr("Har bir rasm hajmi 8MB dan oshmasligi kerak."); continue; }
       try {
         const r = await uploadFile(f, kind, { scope });
         next.push(r.url);
         onChange([...next]);
       } catch (e: any) {
-        setErr(e?.message || "Xatolik");
+        setErr(e?.message || "Rasm yuklashda xatolik yuz berdi.");
       }
     }
     setBusy(false);

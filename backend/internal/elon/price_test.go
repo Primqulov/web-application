@@ -1,6 +1,40 @@
 package elon
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
+
+func TestValidateStartDate(t *testing.T) {
+	// 2026-07-01 10:00 Asia/Tashkent (UTC+5).
+	now := time.Date(2026, 7, 1, 10, 0, 0, 0, uzTZ)
+	day := func(d string) string { return d } // YYYY-MM-DD
+	cases := []struct {
+		name      string
+		startDate string
+		allowPast bool
+		wantErr   bool
+	}{
+		{"empty ok", "", false, false},
+		{"today ok", day("2026-07-01"), false, false},
+		{"today with time ok", "2026-07-01T14:30:00.000", false, false},
+		{"tomorrow ok", day("2026-07-02"), false, false},
+		{"day after tomorrow ok", day("2026-07-03"), false, false},
+		{"3 days ahead rejected", day("2026-07-04"), false, true},
+		{"yesterday rejected on create", day("2026-06-30"), false, true},
+		{"yesterday allowed on update", day("2026-06-30"), true, false},
+		{"too far still rejected on update", day("2026-07-04"), true, true},
+		{"garbage rejected", "not-a-date", false, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			err := validateStartDate(c.startDate, now, c.allowPast)
+			if (err != nil) != c.wantErr {
+				t.Fatalf("validateStartDate(%q, allowPast=%v) err=%v, wantErr=%v", c.startDate, c.allowPast, err, c.wantErr)
+			}
+		})
+	}
+}
 
 func TestComputePrice(t *testing.T) {
 	cases := []struct {

@@ -1,15 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
-import { api, getAccess, Review, User } from "@/lib/api";
-import { Star, CheckCircle2, MessageCircle } from "lucide-react";
+import { api, Review, User } from "@/lib/api";
+import { Star, CheckCircle2 } from "lucide-react";
 import { T } from "@/components/T";
 import { ScriptToggle } from "@/components/ScriptToggle";
 
 export default function PublicProfile() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [u, setU] = useState<User | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   useEffect(() => {
@@ -17,11 +16,6 @@ export default function PublicProfile() {
     api.get<Review[]>(`/api/users/${id}/reviews`, { auth: "none" } as any).then(setReviews).catch(() => {});
   }, [id]);
   if (!u) return <div className="p-6">Yuklanmoqda…</div>;
-  async function startChat() {
-    if (!getAccess()) return router.push("/login");
-    const c = await api.post<{ id: string }>("/api/conversations", { userId: id });
-    router.push(`/chat/${c.id}`);
-  }
   return (
     <div className="min-h-screen p-4 mx-auto max-w-3xl">
       <div className="flex items-center justify-between mb-4">
@@ -43,7 +37,6 @@ export default function PublicProfile() {
             </div>
           )}
           {u.bio && <p className="mt-3 text-sm">{u.bio}</p>}
-          <button onClick={startChat} className="btn-primary mt-4 gap-2"><MessageCircle size={16} /><T>Xabar yozish</T></button>
         </div>
       </div>
       <div className="card p-6 mt-4">

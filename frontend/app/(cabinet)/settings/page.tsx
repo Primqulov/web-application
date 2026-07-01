@@ -33,7 +33,7 @@ export default function Settings() {
       <div className="card p-6 grid gap-4 max-w-xl">
         <h2 className="font-semibold heading"><T>Profil ma'lumotlari</T></h2>
         <AvatarUploader value={avatarUrl} name={`${first} ${last}`} onChange={setAvatarUrl} />
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block"><span className="text-sm"><T>Ism</T></span><input className="input mt-1" value={first} onChange={(e) => setFirst(e.target.value)} /></label>
           <label className="block"><span className="text-sm"><T>Familiya</T></span><input className="input mt-1" value={last} onChange={(e) => setLast(e.target.value)} /></label>
         </div>

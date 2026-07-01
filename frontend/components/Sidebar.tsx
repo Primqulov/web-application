@@ -2,8 +2,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutGrid, ListChecks, FileText, MessageSquare, History,
-  Wallet, Bell, Settings, User as UserIcon, PlusCircle, LogOut,
+  LayoutGrid, ListChecks, FileText, History,
+  Settings, User as UserIcon, PlusCircle, LogOut, MessageSquareWarning,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api, User, setAccess, setRefresh } from "@/lib/api";
@@ -13,10 +13,8 @@ const items = [
   { href: "/dashboard", label: "Bosh sahifa", icon: LayoutGrid },
   { href: "/my-elons", label: "Mening e'lonlarim", icon: ListChecks },
   { href: "/process", label: "Jarayonlar", icon: FileText },
-  { href: "/chat", label: "Xabarlar", icon: MessageSquare },
   { href: "/history", label: "Ishlar tarixi", icon: History },
-  { href: "/finance", label: "Moliya", icon: Wallet },
-  { href: "/notifications", label: "Bildirishnomalar", icon: Bell },
+  { href: "/feedback", label: "Taklif va shikoyatlar", icon: MessageSquareWarning },
   { href: "/settings", label: "Sozlamalar", icon: Settings },
   { href: "/profile", label: "Profil", icon: UserIcon },
 ];

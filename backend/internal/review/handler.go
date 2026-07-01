@@ -97,7 +97,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, 201, rev)
 }
 
-// Recompute averages all reviews for toID and writes rating/reviewsCount.
+// Recompute averages all reviews for toID and writes the overall rating plus
+// the two role-specific ratings:
+//   - "employer_to_worker" reviews -> the user is rated AS A WORKER (workerRating)
+//   - "worker_to_employer" reviews -> the user is rated AS AN EMPLOYER (employerRating)
 func Recompute(ctx context.Context, reviews, users *mongo.Collection, toID primitive.ObjectID) error {
 	cur, err := reviews.Find(ctx, bson.M{"toUserId": toID})
 	if err != nil {
@@ -105,19 +108,39 @@ func Recompute(ctx context.Context, reviews, users *mongo.Collection, toID primi
 	}
 	defer cur.Close(ctx)
 	var sum, n int
+	var wSum, wN int
+	var eSum, eN int
 	for cur.Next(ctx) {
 		var r models.Review
 		if err := cur.Decode(&r); err == nil {
 			sum += r.Rating
 			n++
+			switch r.Direction {
+			case "employer_to_worker":
+				wSum += r.Rating
+				wN++
+			case "worker_to_employer":
+				eSum += r.Rating
+				eN++
+			}
 		}
 	}
-	avg := 0.0
-	if n > 0 {
-		avg = math.Round(float64(sum)/float64(n)*10) / 10
-	}
-	_, err = users.UpdateOne(ctx, bson.M{"_id": toID}, bson.M{"$set": bson.M{"rating": avg, "reviewsCount": n}})
+	_, err = users.UpdateOne(ctx, bson.M{"_id": toID}, bson.M{"$set": bson.M{
+		"rating":               avgRound(sum, n),
+		"reviewsCount":         n,
+		"workerRating":         avgRound(wSum, wN),
+		"workerReviewsCount":   wN,
+		"employerRating":       avgRound(eSum, eN),
+		"employerReviewsCount": eN,
+	}})
 	return err
+}
+
+func avgRound(sum, n int) float64 {
+	if n == 0 {
+		return 0
+	}
+	return math.Round(float64(sum)/float64(n)*10) / 10
 }
 
 func (h *Handler) ListForUser(w http.ResponseWriter, r *http.Request) {

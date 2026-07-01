@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import { api, Review, User } from "@/lib/api";
 import { Shell } from "@/components/Shell";
-import { Star, CheckCircle2 } from "lucide-react";
+import { Avatar } from "@/components/ui/Avatar";
+import { Star, CheckCircle2, Briefcase, UserRound } from "lucide-react";
 import { T } from "@/components/T";
 
 export default function MyProfile() {
@@ -18,14 +19,30 @@ export default function MyProfile() {
   return (
     <Shell title="Mening profilim">
       <div className="card p-6 flex gap-4 items-start">
-        <div className="h-20 w-20 rounded-full bg-brand-navy text-white grid place-items-center text-2xl font-bold">{me.firstName?.[0]?.toUpperCase()}</div>
+        <Avatar size="xl" name={`${me.firstName} ${me.lastName}`} src={me.avatarUrl || undefined} />
         <div className="flex-1">
           <h1 className="text-xl font-bold">{me.firstName} {me.lastName} {me.isPhoneVerified && <span className="ml-1 align-middle text-success"><CheckCircle2 size={16} className="inline" /></span>}</h1>
-          <div className="text-sm text-[color:var(--text-muted)] mt-1 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1"><Star size={14} className="text-accent-amber" />{me.rating.toFixed(1)} ({me.reviewsCount} <T>baho</T>)</span>
-            <span>•</span><span>{me.region}{me.district ? `, ${me.district}` : ""}</span>
+          <div className="text-sm text-[color:var(--text-muted)] mt-1 flex items-center gap-2 flex-wrap">
+            <span>{me.region}{me.district ? `, ${me.district}` : ""}</span>
             <span>•</span><span>{me.completedJobsCount} <T>bajarilgan ish</T></span>
           </div>
+
+          {/* Ikki tomonlama reyting: ishchi va ish beruvchi sifatida */}
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-md">
+            <RatingCard
+              icon={<Briefcase size={14} />}
+              label="Ishchi sifatida"
+              rating={me.workerRating ?? 0}
+              count={me.workerReviewsCount ?? 0}
+            />
+            <RatingCard
+              icon={<UserRound size={14} />}
+              label="Ish beruvchi sifatida"
+              rating={me.employerRating ?? 0}
+              count={me.employerReviewsCount ?? 0}
+            />
+          </div>
+
           {me.skills && me.skills.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {me.skills.map((s, i) => <span key={i} className="chip">{s}</span>)}
@@ -49,5 +66,18 @@ export default function MyProfile() {
         </div>
       </div>
     </Shell>
+  );
+}
+
+function RatingCard({ icon, label, rating, count }: { icon: React.ReactNode; label: string; rating: number; count: number }) {
+  return (
+    <div className="rounded-lg border p-2.5" style={{ borderColor: "var(--border)" }}>
+      <div className="text-xs muted flex items-center gap-1.5">{icon}<T>{label}</T></div>
+      <div className="mt-1 flex items-center gap-1 font-semibold">
+        <Star size={14} className="text-accent-amber" fill="currentColor" />
+        {rating > 0 ? rating.toFixed(1) : "—"}
+        <span className="text-xs muted font-normal">({count} <T>baho</T>)</span>
+      </div>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { safeImageSrc } from "@/lib/url";
 
 interface Props {
   name?: string;
@@ -32,11 +33,12 @@ export function Avatar({ name, src, size = "md", online }: Props) {
   const px = sz[size];
   const fs = ts[size];
   const { bg, fg } = colorFor(name);
+  const safeSrc = safeImageSrc(src);
   return (
     <div className="relative inline-flex shrink-0">
-      {src ? (
+      {safeSrc ? (
         <img
-          src={src} alt={name || ""}
+          src={safeSrc} alt={name || ""}
           width={px} height={px}
           className="rounded-full object-cover"
           style={{ width: px, height: px }}

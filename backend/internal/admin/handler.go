@@ -27,7 +27,6 @@ type Handler struct {
 	AuditCol *mongo.Collection
 	Notify   *notification.Service
 	Apps     *mongo.Collection
-	Fin      *mongo.Collection
 	Storage  *storage.Service
 }
 
@@ -41,7 +40,6 @@ func NewHandler(cfg config.Config, db *mongo.Database, n *notification.Service, 
 		AuditCol: db.Collection("admin_audit"),
 		Notify:   n,
 		Apps:     db.Collection("applications"),
-		Fin:      db.Collection("finance_entries"),
 		Storage:  s,
 	}
 }
@@ -86,26 +84,9 @@ func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	usersCount, _ := h.Users.CountDocuments(ctx, bson.M{"isDeleted": bson.M{"$ne": true}})
 	elonsCount, _ := h.Elons.CountDocuments(ctx, bson.M{"isDeleted": bson.M{"$ne": true}})
 	completed, _ := h.Apps.CountDocuments(ctx, bson.M{"status": "completed"})
-	// sum circulated amount: completed earned entries
-	pipe := mongo.Pipeline{
-		bson.D{{Key: "$match", Value: bson.M{"status": "completed", "type": "earned", "isNegotiable": false}}},
-		bson.D{{Key: "$group", Value: bson.M{"_id": nil, "sum": bson.M{"$sum": "$amount"}}}},
-	}
-	cur, _ := h.Fin.Aggregate(ctx, pipe)
-	var sum int64
-	if cur != nil {
-		defer cur.Close(ctx)
-		if cur.Next(ctx) {
-			var row struct {
-				Sum int64 `bson:"sum"`
-			}
-			_ = cur.Decode(&row)
-			sum = row.Sum
-		}
-	}
 	httpx.JSON(w, 200, map[string]any{
 		"users": usersCount, "elons": elonsCount,
-		"completed": completed, "circulated": sum,
+		"completed": completed,
 	})
 }
 

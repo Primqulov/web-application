@@ -28,6 +28,9 @@ func NewHandler(cfg config.Config, db *mongo.Database) *Handler {
 	}
 }
 
+// Users exposes the users collection for wiring auth middleware in main.
+func (h *Handler) Users() *mongo.Collection { return h.users }
+
 type requestOTPResp struct {
 	TGToken  string `json:"tgToken"`
 	BotURL   string `json:"botUrl"`
@@ -77,18 +80,19 @@ func (h *Handler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 		tgID  int64
 		err   error
 	)
-	if req.Token != "" {
+	// SECURITY: verification MUST be bound to a specific OTP record — either the
+	// deep-link token (normal flow) or the user's own phone number. The previous
+	// "match by code only" fallback let an attacker brute-force the 6-digit space
+	// against EVERY active code in the database and log in as an arbitrary user
+	// (account takeover). That path has been removed.
+	switch {
+	case req.Token != "":
 		phone, tgID, err = h.otp.VerifyByToken(ctx, req.Token, req.Code)
-		// Fallback: if the bot didn't see the deep-link token (user opened the bot
-		// directly), it wrote a phone+code record with no tgToken. Match by code.
-		if err != nil {
-			phone, tgID, err = h.otp.VerifyByCode(ctx, req.Code)
-		}
-	} else if req.Phone != "" {
+	case req.Phone != "":
 		phone, tgID, err = h.otp.VerifyByPhone(ctx, req.Phone, req.Code)
-	} else {
-		// No token, no phone: still allow code-only match (covers all bot quirks).
-		phone, tgID, err = h.otp.VerifyByCode(ctx, req.Code)
+	default:
+		httpx.Err(w, httpx.NewError(400, "bad_request", "token or phone required"))
+		return
 	}
 	if err != nil {
 		httpx.Err(w, httpx.NewError(401, "invalid_code", "invalid or expired code"))
@@ -192,6 +196,32 @@ func (h *Handler) DevPeekOTP(w http.ResponseWriter, r *http.Request) {
 		"phone":      doc.Phone,
 		"telegramId": doc.TelegramID,
 	})
+}
+
+// RequireActiveUser is middleware that runs AFTER httpx.UserAuth. It rejects
+// requests from accounts that have been blocked or soft-deleted, so an admin's
+// block/delete actually revokes API access instead of only hiding the user.
+func RequireActiveUser(users *mongo.Collection) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			oid, err := primitive.ObjectIDFromHex(httpx.UserID(r))
+			if err != nil {
+				httpx.Err(w, httpx.NewError(401, "bad_token", "bad user id"))
+				return
+			}
+			var u models.User
+			err = users.FindOne(r.Context(), bson.M{"_id": oid}).Decode(&u)
+			if err != nil {
+				httpx.Err(w, httpx.NewError(401, "no_account", "account not found"))
+				return
+			}
+			if u.IsBlocked || u.IsDeleted {
+				httpx.Err(w, httpx.NewError(403, "account_disabled", "account is blocked or deleted"))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // Used by /api/me to expand the current user object.

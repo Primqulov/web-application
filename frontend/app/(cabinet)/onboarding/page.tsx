@@ -48,7 +48,7 @@ export default function Onboarding() {
         <AvatarUploader value={avatarUrl} name={`${firstName} ${lastName}`} onChange={setAvatarUrl} />
         <label className="block">
           <span className="text-sm font-medium"><T>To'liq ism</T></span>
-          <div className="grid grid-cols-2 gap-2 mt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
             <input className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder={t("Ism")} required />
             <input className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder={t("Familiya")} />
           </div>
@@ -60,7 +60,7 @@ export default function Onboarding() {
             <span className="badge-success"><CheckCircle2 size={12} /> <T>Tasdiqlangan</T></span>
           </div>
         </label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block">
             <span className="text-sm font-medium"><T>Viloyat</T></span>
             <select className="input mt-1" value={region} onChange={(e) => setRegion(e.target.value)} required>

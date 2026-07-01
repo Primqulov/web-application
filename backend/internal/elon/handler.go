@@ -2,6 +2,7 @@ package elon
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/ishchibormi/backend/internal/category"
 	"github.com/ishchibormi/backend/internal/models"
 	"github.com/ishchibormi/backend/internal/upload"
+	"github.com/ishchibormi/backend/pkg/geocode"
 	"github.com/ishchibormi/backend/pkg/httpx"
 	"github.com/ishchibormi/backend/pkg/storage"
 	"go.mongodb.org/mongo-driver/bson"
@@ -20,18 +22,20 @@ import (
 )
 
 type Handler struct {
-	Col        *mongo.Collection
-	Categories *mongo.Collection
-	Users      *mongo.Collection
-	Storage    *storage.Service
+	Col          *mongo.Collection
+	Categories   *mongo.Collection
+	Users        *mongo.Collection
+	Applications *mongo.Collection
+	Storage      *storage.Service
 }
 
 func NewHandler(db *mongo.Database, s *storage.Service) *Handler {
 	return &Handler{
-		Col:        db.Collection("elons"),
-		Categories: db.Collection("categories"),
-		Users:      db.Collection("users"),
-		Storage:    s,
+		Col:          db.Collection("elons"),
+		Categories:   db.Collection("categories"),
+		Users:        db.Collection("users"),
+		Applications: db.Collection("applications"),
+		Storage:      s,
 	}
 }
 
@@ -41,6 +45,10 @@ type upsertReq struct {
 	Description   string   `json:"description" validate:"required"`
 	LocationURL   string   `json:"locationUrl"`
 	LocationText  string   `json:"locationText"`
+	// Ish joyi koordinatalari (xaritadan tanlanadi). Viloyat/tuman shulardan
+	// avtomatik aniqlanadi — ish beruvchi qo'lda kiritmaydi.
+	Lat           float64  `json:"lat"`
+	Lng           float64  `json:"lng"`
 	Region        string   `json:"region"`
 	District      string   `json:"district"`
 	WorkersNeeded int      `json:"workersNeeded" validate:"required,gte=1"`
@@ -81,6 +89,14 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		httpx.Err(w, httpx.NewError(400, "bad_request", "title, description and workersNeeded required"))
 		return
 	}
+	if err := validateStartDate(req.StartDate, time.Now(), false); err != nil {
+		httpx.Err(w, err)
+		return
+	}
+	if err := validateURLs(&req); err != nil {
+		httpx.Err(w, err)
+		return
+	}
 	catID, err := primitive.ObjectIDFromHex(req.CategoryID)
 	if err != nil {
 		httpx.Err(w, httpx.NewError(400, "bad_request", "bad categoryId"))
@@ -96,17 +112,27 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var owner models.User
 	_ = h.Users.FindOne(r.Context(), bson.M{"_id": uid}).Decode(&owner)
 
+	// Viloyat/tuman koordinatadan avtomatik aniqlanadi (ish beruvchi xato
+	// kiritmasligi uchun). Manzil matni saqlanmaydi — aniq koordinata bor.
+	region, district := resolveLocation(r.Context(), req.Lat, req.Lng, req.Region, req.District)
+	locationURL := req.LocationURL
+	if locationURL == "" && (req.Lat != 0 || req.Lng != 0) {
+		locationURL = mapsURL(req.Lat, req.Lng)
+	}
+
 	now := time.Now()
+	// E'lon darhol chop etiladi — alohida "qoralama" bosqichi yo'q.
 	e := models.Elon{
 		OwnerID:         uid,
 		Title:           strings.TrimSpace(req.Title),
 		CategoryID:      catID,
 		CategoryName:    cat.Name,
 		Description:     req.Description,
-		LocationURL:     req.LocationURL,
-		LocationText:    req.LocationText,
-		Region:          req.Region,
-		District:        req.District,
+		LocationURL:     locationURL,
+		Lat:             req.Lat,
+		Lng:             req.Lng,
+		Region:          region,
+		District:        district,
 		WorkersNeeded:   req.WorkersNeeded,
 		PricingType:     pType,
 		PriceAmount:     total,
@@ -115,12 +141,14 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		WorkTimeFrom:    req.WorkTimeFrom,
 		WorkTimeTo:      req.WorkTimeTo,
 		ContactPhone:    req.ContactPhone,
-		Status:          "draft",
+		Status:          "recruiting",
+		PublishedAt:     &now,
 		CreatedAt:       now,
 		UpdatedAt:       now,
-		OwnerName:       strings.TrimSpace(owner.FirstName + " " + owner.LastName),
-		OwnerRating:     owner.Rating,
-		Images:          req.Images,
+		OwnerName:         strings.TrimSpace(owner.FirstName + " " + owner.LastName),
+		OwnerRating:       owner.Rating,
+		OwnerReviewsCount: owner.ReviewsCount,
+		Images:            req.Images,
 	}
 	res, err := h.Col.InsertOne(r.Context(), e)
 	if err != nil {
@@ -162,7 +190,20 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		httpx.Err(w, err)
 		return
 	}
+	if err := validateStartDate(req.StartDate, time.Now(), true); err != nil {
+		httpx.Err(w, err)
+		return
+	}
+	if err := validateURLs(&req); err != nil {
+		httpx.Err(w, err)
+		return
+	}
 	pType, total, per := req.computePrice()
+	region, district := resolveLocation(r.Context(), req.Lat, req.Lng, req.Region, req.District)
+	locationURL := req.LocationURL
+	if locationURL == "" && (req.Lat != 0 || req.Lng != 0) {
+		locationURL = mapsURL(req.Lat, req.Lng)
+	}
 	// Image diff: delete any S3 images that are removed from the new list.
 	if req.Images != nil {
 		var prev models.Elon
@@ -181,10 +222,11 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	set := bson.M{
 		"title":           req.Title,
 		"description":     req.Description,
-		"locationUrl":     req.LocationURL,
-		"locationText":    req.LocationText,
-		"region":          req.Region,
-		"district":        req.District,
+		"locationUrl":     locationURL,
+		"lat":             req.Lat,
+		"lng":             req.Lng,
+		"region":          region,
+		"district":        district,
 		"workersNeeded":   req.WorkersNeeded,
 		"pricingType":     pType,
 		"priceAmount":     total,
@@ -226,44 +268,25 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		httpx.Err(w, httpx.NewError(400, "bad_id", "bad id"))
 		return
 	}
-	// Look up images before soft-deleting so we can remove them from S3.
+	// Rasmlarni S3/diskdan o'chirish uchun oldin o'qib olamiz.
 	var prev models.Elon
 	_ = h.Col.FindOne(r.Context(), bson.M{"_id": id, "ownerId": uid}).Decode(&prev)
-	res, err := h.Col.UpdateOne(r.Context(),
-		bson.M{"_id": id, "ownerId": uid},
-		bson.M{"$set": bson.M{"isDeleted": true, "status": "cancelled", "updatedAt": time.Now()}})
+	// E'lonni bazadan BUTUNLAY o'chiramiz (soft-delete emas).
+	res, err := h.Col.DeleteOne(r.Context(), bson.M{"_id": id, "ownerId": uid})
 	if err != nil {
 		httpx.Err(w, err)
 		return
 	}
-	if res.MatchedCount == 0 {
+	if res.DeletedCount == 0 {
 		httpx.Err(w, httpx.NewError(404, "not_found_or_forbidden", "elon not found or not yours"))
 		return
 	}
+	// Shu e'longa bog'liq arizalarni ham o'chiramiz (bog'liqsiz yozuvlar qolmasligi uchun).
+	_, _ = h.Applications.DeleteMany(r.Context(), bson.M{"elonId": id})
 	for _, u := range prev.Images {
 		go upload.DeleteByURL(h.Storage, u)
 	}
 	httpx.JSON(w, 200, map[string]bool{"ok": true})
-}
-
-func (h *Handler) Publish(w http.ResponseWriter, r *http.Request) {
-	uid, _ := primitive.ObjectIDFromHex(httpx.UserID(r))
-	id, err := primitive.ObjectIDFromHex(chi.URLParam(r, "id"))
-	if err != nil {
-		httpx.Err(w, httpx.NewError(400, "bad_id", "bad id"))
-		return
-	}
-	now := time.Now()
-	res := h.Col.FindOneAndUpdate(r.Context(),
-		bson.M{"_id": id, "ownerId": uid, "status": "draft"},
-		bson.M{"$set": bson.M{"status": "recruiting", "publishedAt": now, "updatedAt": now}},
-		options.FindOneAndUpdate().SetReturnDocument(options.After))
-	var e models.Elon
-	if err := res.Decode(&e); err != nil {
-		httpx.Err(w, httpx.NewError(404, "not_found_or_forbidden", "draft not found"))
-		return
-	}
-	httpx.JSON(w, 200, e)
 }
 
 // Feed: public listing for recruiting + filled (paged).
@@ -280,6 +303,10 @@ func (h *Handler) Feed(w http.ResponseWriter, r *http.Request) {
 		page = 1
 	}
 	filter := bson.M{"isDeleted": bson.M{"$ne": true}, "status": bson.M{"$in": []string{"recruiting", "filled"}}}
+	// Vaqti o'tgan e'lonlarni feeddan yashiramiz: belgilangan boshlanish
+	// vaqtidan (kun + soat) feedExpiryGrace dan ko'p o'tgan bo'lsa — ro'yxatda
+	// ko'rinmaydi (kechagi/eski e'lonlar va bugun bo'lib o'tganlari ham).
+	filter["$expr"] = notExpiredExpr(time.Now(), feedExpiryGrace)
 	if q != "" {
 		rx := primitive.Regex{Pattern: regexpEscape(q), Options: "i"}
 		filter["$or"] = []bson.M{{"title": rx}, {"description": rx}, {"locationText": rx}, {"categoryName": rx}}
@@ -327,27 +354,176 @@ func (h *Handler) MyElons(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer cur.Close(r.Context())
-	drafts := []models.Elon{}
+	now := time.Now()
 	active := []models.Elon{}
 	archived := []models.Elon{}
 	for cur.Next(r.Context()) {
 		var e models.Elon
-		if err := cur.Decode(&e); err == nil {
-			switch e.Status {
-			case "draft":
-				drafts = append(drafts, e)
-			case "recruiting", "filled", "in_progress":
-				if e.IsDeleted {
-					archived = append(archived, e)
-				} else {
-					active = append(active, e)
-				}
-			default: // completed/cancelled
-				archived = append(archived, e)
-			}
+		if err := cur.Decode(&e); err != nil {
+			continue
+		}
+		// Faol = hozir ishchilarga ko'rinadigan (feeddagi kabi): o'chirilmagan,
+		// hali ochiq (recruiting/filled/in_progress) va belgilangan vaqti o'tmagan.
+		open := e.Status == "recruiting" || e.Status == "filled" || e.Status == "in_progress"
+		if !e.IsDeleted && open && !isExpired(e, now, feedExpiryGrace) {
+			active = append(active, e)
+		} else {
+			// Arxiv = vaqti o'tgan, yakunlangan yoki bekor qilingan e'lonlar.
+			archived = append(archived, e)
 		}
 	}
-	httpx.JSON(w, 200, map[string]any{"drafts": drafts, "active": active, "archived": archived})
+	httpx.JSON(w, 200, map[string]any{"active": active, "archived": archived})
+}
+
+// feedExpiryGrace — e'lon belgilangan boshlanish vaqtidan shuncha o'tgach
+// ommaviy feeddan chiqib ketadi (ish odatda shu oraliqda boshlanib bo'ladi).
+const feedExpiryGrace = 6 * time.Hour
+
+// notExpiredExpr — feeddagi e'lonni faqat boshlanish vaqti `grace` dan ko'p
+// o'tmagan bo'lsa qoldiradigan MongoDB `$expr` qaytaradi.
+//
+// `startDate` har xil klientlarda har xil saqlanadi: to'liq ISO sana-vaqt
+// (Flutter ilovasi) yoki faqat sana (web/seed). Shuning uchun kun startDate dan,
+// soat esa — startDate ichidan (to'liq bo'lsa), bo'lmasa workTimeFrom dan,
+// u ham bo'lmasa kun oxiri (23:59) deb olinadi. Naive (mintaqasiz) vaqtlar
+// Asia/Tashkent bo'yicha talqin qilinadi. Bo'sh yoki noto'g'ri sanalar uzoq
+// kelajak deb hisoblanadi — eski e'lonlar tasodifan yo'qolib qolmasligi uchun.
+func notExpiredExpr(now time.Time, grace time.Duration) bson.M {
+	startStr := bson.M{"$ifNull": bson.A{"$startDate", ""}}
+	workFrom := bson.M{"$ifNull": bson.A{"$workTimeFrom", ""}}
+	datePart := bson.M{"$substrBytes": bson.A{startStr, 0, 10}}
+	timePart := bson.M{"$cond": bson.A{
+		// startDate to'liq sana-vaqt bo'lsa ("...T14:30...") — soatni shundan olamiz.
+		bson.M{"$gt": bson.A{bson.M{"$strLenBytes": startStr}, 10}},
+		bson.M{"$substrBytes": bson.A{startStr, 11, 5}},
+		// aks holda workTimeFrom, u ham bo'lmasa — kun oxiri.
+		bson.M{"$cond": bson.A{
+			bson.M{"$gt": bson.A{bson.M{"$strLenBytes": workFrom}, 0}},
+			workFrom,
+			"23:59",
+		}},
+	}}
+	farFuture := now.AddDate(100, 0, 0)
+	startInstant := bson.M{"$dateFromString": bson.M{
+		"dateString": bson.M{"$concat": bson.A{datePart, "T", timePart}},
+		"format":     "%Y-%m-%dT%H:%M",
+		"timezone":   "Asia/Tashkent",
+		"onError":    farFuture,
+		"onNull":     farFuture,
+	}}
+	return bson.M{"$gte": bson.A{startInstant, now.Add(-grace)}}
+}
+
+// uzTZ — O'zbekiston vaqti (UTC+5, yozgi vaqt yo'q); notExpiredExpr'dagi
+// "Asia/Tashkent" bilan mos keladi.
+var uzTZ = time.FixedZone("UZT", 5*3600)
+
+// maxScheduleDays — ish faqat shu qadar kun oldinga joylashtiriladi: bugun (0),
+// erta (1) va indin (2). Ya'ni ruxsat etilgan oraliq [bugun .. bugun+2 kun].
+const maxScheduleDays = 2
+
+// validateStartDate — startDate O'zbekiston vaqti bo'yicha bugundan indingacha
+// (0..maxScheduleDays kun) oralig'ida ekanini tekshiradi. Faqat kun qismi
+// (YYYY-MM-DD) muhim; soat e'tiborga olinmaydi. Bo'sh startDate ruxsat etiladi
+// (ixtiyoriy maydon) — mavjud xatti-harakat buzilmasligi uchun.
+//
+// allowPast=true bo'lsa o'tgan sana ta'qiqlanmaydi (tahrirlashda: e'lon avval
+// joylashtirilib, vaqti allaqachon o'tgan bo'lishi mumkin). Kelajakdagi yuqori
+// chegara (bugun+maxScheduleDays) esa har doim tekshiriladi.
+func validateStartDate(startDate string, now time.Time, allowPast bool) error {
+	s := strings.TrimSpace(startDate)
+	if s == "" {
+		return nil
+	}
+	datePart := s
+	if len(s) >= 10 {
+		datePart = s[:10]
+	}
+	day, err := time.ParseInLocation("2006-01-02", datePart, uzTZ)
+	if err != nil {
+		return httpx.NewError(400, "bad_start_date", "invalid start date")
+	}
+	nowUz := now.In(uzTZ)
+	today := time.Date(nowUz.Year(), nowUz.Month(), nowUz.Day(), 0, 0, 0, 0, uzTZ)
+	maxDay := today.AddDate(0, 0, maxScheduleDays)
+	if !allowPast && day.Before(today) {
+		return httpx.NewError(400, "start_date_past", "start date cannot be in the past")
+	}
+	if day.After(maxDay) {
+		return httpx.NewError(400, "start_date_too_far", "start date can be at most 3 days ahead (today, tomorrow or the day after)")
+	}
+	return nil
+}
+
+// isExpired — e'lon belgilangan boshlanish vaqtidan `grace` dan ko'p o'tgan
+// bo'lsa true qaytaradi. Mantiq notExpiredExpr (feed) bilan bir xil: kun
+// startDate'dan, soat startDate ichidan (to'liq sana-vaqt bo'lsa), bo'lmasa
+// workTimeFrom'dan, u ham bo'lmasa kun oxiri (23:59) deb olinadi. Bo'sh yoki
+// noto'g'ri sana muddati o'tmagan deb hisoblanadi (e'lon tasodifan arxivga
+// tushib qolmasligi uchun).
+func isExpired(e models.Elon, now time.Time, grace time.Duration) bool {
+	s := strings.TrimSpace(e.StartDate)
+	if s == "" {
+		return false
+	}
+	datePart := s
+	if len(s) >= 10 {
+		datePart = s[:10]
+	}
+	timePart := ""
+	if len(s) >= 16 {
+		timePart = s[11:16] // to'liq ISO sana-vaqtdan HH:MM
+	}
+	if timePart == "" {
+		if wf := strings.TrimSpace(e.WorkTimeFrom); wf != "" {
+			timePart = wf
+		} else {
+			timePart = "23:59"
+		}
+	}
+	start, err := time.ParseInLocation("2006-01-02T15:04", datePart+"T"+timePart, uzTZ)
+	if err != nil {
+		return false
+	}
+	return start.Before(now.Add(-grace))
+}
+
+// resolveLocation aniqlangan koordinatadan viloyat/tuman qaytaradi. Reverse
+// geocoding muvaffaqiyatsiz bo'lsa, klient yuborgan qiymatlarga qaytadi.
+func resolveLocation(ctx context.Context, lat, lng float64, fallbackRegion, fallbackDistrict string) (string, string) {
+	if lat != 0 || lng != 0 {
+		if p, err := geocode.Reverse(ctx, lat, lng); err == nil {
+			region := p.Region
+			district := p.District
+			if region == "" {
+				region = strings.TrimSpace(fallbackRegion)
+			}
+			if district == "" {
+				district = strings.TrimSpace(fallbackDistrict)
+			}
+			return region, district
+		}
+	}
+	return strings.TrimSpace(fallbackRegion), strings.TrimSpace(fallbackDistrict)
+}
+
+func mapsURL(lat, lng float64) string {
+	return fmt.Sprintf("https://www.google.com/maps?q=%f,%f", lat, lng)
+}
+
+// validateURLs rejects any user-supplied URL that isn't a safe http(s) link.
+// locationUrl and images are later rendered in hrefs/img on other users'
+// browsers, so a javascript:/data: value would be a stored-XSS vector.
+func validateURLs(req *upsertReq) error {
+	if !httpx.IsSafeHTTPURL(req.LocationURL) {
+		return httpx.NewError(400, "bad_location_url", "location url must be http(s)")
+	}
+	for _, img := range req.Images {
+		if strings.TrimSpace(img) == "" || !httpx.IsSafeHTTPURL(img) {
+			return httpx.NewError(400, "bad_image_url", "image url must be http(s)")
+		}
+	}
+	return nil
 }
 
 func regexpEscape(s string) string {

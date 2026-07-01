@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Star, ShieldCheck, CheckCircle2, Clock, MessageSquare, ShieldAlert,
-  MapPin, User as UserIcon, Wrench, Sparkles, Truck, Hammer, Trees,
-  Boxes, MoreHorizontal, Phone, Send, ArrowRight, Search, ArrowUpRight,
+  MapPin, User as UserIcon, Sparkles, Truck, Hammer,
+  Phone, Send, ArrowRight, Search, ArrowUpRight,
 } from "lucide-react";
-import { api, Elon, getAccess } from "@/lib/api";
+import { api, Elon, User, getAccess } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { ScriptToggle } from "@/components/ScriptToggle";
@@ -16,12 +17,28 @@ import { fmtSum, fmtSumSom } from "@/lib/format";
 
 export default function Landing() {
   const t = useT();
+  const router = useRouter();
   const [examples, setExamples] = useState<Elon[]>([]);
+  const [checking, setChecking] = useState(true);
+
+  // Tizimga kirgan foydalanuvchiga landing ko'rsatilmaydi — to'g'ridan-to'g'ri
+  // kabinetga (yoki ro'yxatdan o'tish tugamagan bo'lsa onboardingga) yo'naltiramiz.
+  useEffect(() => {
+    if (!getAccess()) { setChecking(false); return; }
+    api.get<User>("/api/me")
+      .then((u) => router.replace(u.onboardingCompleted ? "/dashboard" : "/onboarding"))
+      .catch(() => setChecking(false));
+  }, [router]);
+
   useEffect(() => {
     api.get<{ items: Elon[] }>("/api/elons?limit=3", { auth: "none" } as any)
       .then((r) => setExamples(r.items || [])).catch(() => {});
   }, []);
   const ctaHref = getAccess() ? "/dashboard" : "/login";
+
+  if (checking && getAccess()) {
+    return <div className="min-h-screen grid place-items-center muted text-sm"><T>Yuklanmoqda…</T></div>;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -97,7 +114,7 @@ export default function Landing() {
                     </div>
                   </div>
                   <div className="mt-3 text-xs muted flex items-center gap-1.5">
-                    <MapPin size={12} />{e.locationText || e.location}
+                    <MapPin size={12} />{e.locationText || [e.region, e.district].filter(Boolean).join(", ") || e.location}
                   </div>
                   <div className="mt-4 pt-3 border-t flex items-end justify-between" style={{ borderColor: "var(--border)" }}>
                     <div>
@@ -157,15 +174,10 @@ export default function Landing() {
         <section id="categories" className="px-4 py-16" style={{ background: "var(--bg-subtle)" }}>
           <div className="mx-auto max-w-6xl">
             <SectionHeader eyebrow="Xizmatlar" title="Mashhur xizmat turlari" />
-            <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Cat icon={<Wrench size={20} />}          label="Qurilish" />
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl mx-auto">
               <Cat icon={<Sparkles size={20} />}        label="Tozalash" />
               <Cat icon={<Truck size={20} />}           label="Yuk tashish" />
               <Cat icon={<Hammer size={20} />}          label="Ustachilik" />
-              <Cat icon={<Trees size={20} />}           label="Bog'dorchilik" />
-              <Cat icon={<Boxes size={20} />}           label="Ko'chirish" />
-              <Cat icon={<Phone size={20} />}           label="Kuryerlik" />
-              <Cat icon={<MoreHorizontal size={20} />}  label="Boshqalar" />
             </div>
           </div>
         </section>

@@ -32,15 +32,18 @@ var lastNames = []string{
 	"Toshpo'latov", "Egamberdiyev", "Mirzayev", "Soliyev",
 }
 
-var regions = []struct{ Region, District string }{
-	{"Toshkent", "Chilonzor"}, {"Toshkent", "Yunusobod"}, {"Toshkent", "Sergeli"},
-	{"Toshkent", "Mirzo Ulug'bek"}, {"Toshkent", "Yashnobod"},
-	{"Samarqand", "Bag'ishamol"}, {"Samarqand", "Urgut"},
-	{"Buxoro", "Olot"}, {"Buxoro", "Kogon"},
-	{"Farg'ona", "Marg'ilon"}, {"Farg'ona", "Quvasoy"},
-	{"Namangan", "Pop"}, {"Namangan", "Chust"},
-	{"Andijon", "Asaka"}, {"Qashqadaryo", "Qarshi"},
-	{"Surxondaryo", "Termiz"},
+var regions = []struct {
+	Region, District string
+	Lat, Lng         float64
+}{
+	{"Toshkent", "Chilonzor", 41.2755, 69.2031}, {"Toshkent", "Yunusobod", 41.3640, 69.2880}, {"Toshkent", "Sergeli", 41.2230, 69.2200},
+	{"Toshkent", "Mirzo Ulug'bek", 41.3300, 69.3340}, {"Toshkent", "Yashnobod", 41.2880, 69.3110},
+	{"Samarqand", "Bag'ishamol", 39.6542, 66.9597}, {"Samarqand", "Urgut", 39.4010, 67.2410},
+	{"Buxoro", "Olot", 39.4140, 63.6760}, {"Buxoro", "Kogon", 39.7220, 64.5520},
+	{"Farg'ona", "Marg'ilon", 40.4710, 71.7240}, {"Farg'ona", "Quvasoy", 40.2990, 71.9740},
+	{"Namangan", "Pop", 40.8730, 71.1090}, {"Namangan", "Chust", 41.0000, 71.2360},
+	{"Andijon", "Asaka", 40.6420, 72.2370}, {"Qashqadaryo", "Qarshi", 38.8610, 65.7890},
+	{"Surxondaryo", "Termiz", 37.2240, 67.2780},
 }
 
 type catSeed struct {
@@ -49,22 +52,9 @@ type catSeed struct {
 }
 
 var categories = []catSeed{
-	{"Mebel tashish", "mebel-tashish", "📦", true},
-	{"Santexnika", "santexnika", "🔧", true},
 	{"Tozalash", "tozalash", "🧹", true},
-	{"Elektr toki", "elektr-toki", "⚡", true},
-	{"Kuryerlik", "kuryerlik", "🛵", true},
-	{"Qurilish", "qurilish", "🏗️", true},
 	{"Yuk tashish", "yuk-tashish", "🚚", true},
 	{"Ustachilik", "ustachilik", "🛠️", true},
-	{"Bog'dorchilik", "bogdorchilik", "🌳", true},
-	{"Devor bo'yash", "devor-boyash", "🎨", true},
-	{"Deraza yuvish", "deraza-yuvish", "🪟", true},
-	{"Ko'chirish", "kochirish", "🏠", true},
-	{"Hovli tozalash", "hovli-tozalash", "🍂", true},
-	{"Ovqat tayyorlash", "ovqat-tayyorlash", "🍲", true},
-	{"Bolalar parvarishi", "bolalar-parvarishi", "👶", true},
-	{"Boshqalar", "boshqalar", "📌", true},
 }
 
 type elonSeed struct {
@@ -77,23 +67,18 @@ type elonSeed struct {
 }
 
 var elonSeeds = []elonSeed{
-	{"Mebel tashishga ishchilar kerak", "3 xonali kvartiradan yangi uyga mebel tashish.", "Mebel tashish", 3, "per_worker", 150000, "recruiting"},
-	{"Hovli tozalash", "Katta hovlini yig'ishtirish va xashagini chiqarish.", "Hovli tozalash", 2, "per_worker", 100000, "recruiting"},
-	{"Santexnika xizmati", "Hammomdagi kran va lavabo ta'mirlash.", "Santexnika", 1, "total", 250000, "recruiting"},
-	{"Devorlarni bo'yash", "Yangi yotoq xonasi devorlarini bo'yash.", "Devor bo'yash", 2, "per_worker", 200000, "filled"},
-	{"Kuryer kerak (1 kunlik)", "Shahar bo'ylab paket yetkazib berish.", "Kuryerlik", 1, "per_worker", 120000, "recruiting"},
-	{"Deraza yuvish", "Ofisdagi 20 ta derazani tozalash.", "Deraza yuvish", 2, "per_worker", 80000, "completed"},
-	{"Yuk mashina yordamida ko'chirish", "Buyumlarni boshqa shaharga olib borish.", "Ko'chirish", 4, "total", 1200000, "completed"},
-	{"Elektr tarmog'ini tortish", "Yangi qurilgan uyda elektr o'tkazish.", "Elektr toki", 2, "per_worker", 350000, "in_progress"},
-	{"Bog'dorchilik", "Bog'dagi olma va o'rik daraxtlarini parvarish qilish.", "Bog'dorchilik", 1, "total", 180000, "recruiting"},
-	{"Ovqat tayyorlash (to'y uchun)", "100 kishi uchun palov tayyorlash.", "Ovqat tayyorlash", 2, "per_worker", 500000, "recruiting"},
-	{"Bolalar parvarishi (kunduzi)", "2 yoshli bola bilan ishlash kerak.", "Bolalar parvarishi", 1, "total", 200000, "draft"},
-	{"Qurilish ishchilari (3 kun)", "Pol va devor qoplash ishlari.", "Qurilish", 5, "per_worker", 300000, "recruiting"},
-	{"Tozalash (do'kon)", "Yangi ochilgan do'konni umumiy tozalash.", "Tozalash", 3, "per_worker", 90000, "completed"},
-	{"Uy ko'chirish", "1 xonali uyni Sergeli tumaniga ko'chirish.", "Ko'chirish", 2, "negotiable", 0, "cancelled"},
-	{"Ustachilik xizmati", "Yog'och eshikni tuzatish.", "Ustachilik", 1, "total", 150000, "recruiting"},
-	{"Sayqal tozalash (ofis)", "Ofisdagi har kungi tozalash.", "Tozalash", 1, "per_worker", 70000, "filled"},
+	{"Ofis tozalash", "Ofisdagi har kungi umumiy tozalash.", "Tozalash", 2, "per_worker", 90000, "recruiting"},
+	{"Hovli tozalash", "Katta hovlini yig'ishtirish va xashagini chiqarish.", "Tozalash", 2, "per_worker", 100000, "recruiting"},
+	{"Deraza yuvish", "Ofisdagi 20 ta derazani tozalash.", "Tozalash", 2, "per_worker", 80000, "completed"},
+	{"Ta'mirdan keyin tozalash", "Ta'mirdan keyin kvartirani umumiy tozalash.", "Tozalash", 3, "per_worker", 120000, "filled"},
+	{"Mebel tashishga ishchilar kerak", "3 xonali kvartiradan yangi uyga mebel tashish.", "Yuk tashish", 3, "per_worker", 150000, "recruiting"},
+	{"Uy ko'chirish", "1 xonali uyni Sergeli tumaniga ko'chirish.", "Yuk tashish", 2, "negotiable", 0, "recruiting"},
+	{"Yuk mashinada ko'chirish", "Buyumlarni boshqa shaharga olib borish.", "Yuk tashish", 4, "total", 1200000, "completed"},
+	{"Kuryer kerak (1 kunlik)", "Shahar bo'ylab paket yetkazib berish.", "Yuk tashish", 1, "per_worker", 120000, "in_progress"},
+	{"Santexnika xizmati", "Hammomdagi kran va lavabo ta'mirlash.", "Ustachilik", 1, "total", 250000, "recruiting"},
+	{"Eshik ta'mirlash", "Yog'och eshikni tuzatish.", "Ustachilik", 1, "total", 150000, "recruiting"},
 	{"Mebel yig'ish", "IKEA tipidagi mebellarni yig'ish.", "Ustachilik", 2, "per_worker", 120000, "completed"},
+	{"Devorlarni bo'yash", "Yangi yotoq xonasi devorlarini bo'yash.", "Ustachilik", 2, "per_worker", 200000, "filled"},
 }
 
 func main() {
@@ -111,7 +96,7 @@ func main() {
 
 	// idempotency: clear domain collections
 	cols := []string{"users", "categories", "elons", "applications", "reviews",
-		"conversations", "messages", "notifications", "reports", "finance_entries",
+		"notifications", "reports", "feedback",
 		"admins", "admin_audit", "otp_codes"}
 	for _, c := range cols {
 		if _, err := mdb.Collection(c).DeleteMany(ctx, bson.M{}); err != nil {
@@ -190,7 +175,7 @@ func main() {
 		owner := users[i%len(users)]
 		cid, ok := catIDs[e.CategoryName]
 		if !ok {
-			cid = catIDs["Boshqalar"]
+			cid = catIDs["Tozalash"]
 		}
 		pType := e.PricingType
 		per := e.PriceAmount
@@ -217,8 +202,9 @@ func main() {
 			CategoryID:      cid,
 			CategoryName:    e.CategoryName,
 			Description:     e.Description,
-			LocationText:    reg.Region + ", " + reg.District,
-			LocationURL:     "https://maps.google.com/?q=" + reg.Region,
+			LocationURL:     fmt.Sprintf("https://www.google.com/maps?q=%f,%f", reg.Lat, reg.Lng),
+			Lat:             reg.Lat,
+			Lng:             reg.Lng,
 			Region:          reg.Region,
 			District:        reg.District,
 			WorkersNeeded:   e.WorkersNeeded,
@@ -362,59 +348,10 @@ func main() {
 	}
 	fmt.Printf("reviews: %d\n", len(reviews))
 
-	// ---- conversations + messages ----
-	conversations := []models.Conversation{}
-	messages := []models.Message{}
-	for i := 0; i < 16; i++ {
-		a := users[i%len(users)]
-		b := users[(i+5)%len(users)]
-		if a.ID == b.ID {
-			b = users[(i+6)%len(users)]
-		}
-		cid := primitive.NewObjectID()
-		unread := map[string]int{a.ID.Hex(): rand.Intn(3), b.ID.Hex(): rand.Intn(3)}
-		messages = append(messages, models.Message{
-			ID: primitive.NewObjectID(), ConversationID: cid, SenderID: a.ID,
-			Text: "Assalomu alaykum, ish haqida gaplashsak bo'ladimi?",
-			CreatedAt: now.Add(-time.Duration(rand.Intn(120)) * time.Hour),
-		})
-		messages = append(messages, models.Message{
-			ID: primitive.NewObjectID(), ConversationID: cid, SenderID: b.ID,
-			Text: "Albatta, qachon kelishingiz mumkin?",
-			CreatedAt: now.Add(-time.Duration(rand.Intn(60)) * time.Hour),
-		})
-		conversations = append(conversations, models.Conversation{
-			ID: cid,
-			ParticipantIDs:  []primitive.ObjectID{a.ID, b.ID},
-			LastMessageText: "Albatta, qachon kelishingiz mumkin?",
-			LastMessageAt:   now,
-			LastSenderID:    b.ID,
-			Unread:          unread,
-			CreatedAt:       now.Add(-72 * time.Hour),
-		})
-	}
-	{
-		docs := make([]any, len(conversations))
-		for i, c := range conversations {
-			docs[i] = c
-		}
-		if _, err := mdb.Collection("conversations").InsertMany(ctx, docs); err != nil {
-			log.Printf("conversations: %v", err)
-		}
-		md := make([]any, len(messages))
-		for i, m := range messages {
-			md[i] = m
-		}
-		if _, err := mdb.Collection("messages").InsertMany(ctx, md); err != nil {
-			log.Printf("messages: %v", err)
-		}
-	}
-	fmt.Printf("conversations: %d, messages: %d\n", len(conversations), len(messages))
-
 	// ---- notifications ----
 	notifs := []any{}
 	types := []string{"new_application", "application_accepted", "application_rejected",
-		"new_message", "job_completed_request", "job_completed", "new_review", "system"}
+		"job_completed_request", "job_completed", "new_review", "system"}
 	for i := 0; i < 20; i++ {
 		t := types[i%len(types)]
 		u := users[i%len(users)]
@@ -449,50 +386,34 @@ func main() {
 	}
 	fmt.Printf("reports: %d\n", len(reports))
 
-	// ---- finance entries (from completed + cancelled apps) ----
-	finance := []any{}
-	for _, a := range apps {
-		switch a.Status {
-		case "completed":
-			finance = append(finance, models.FinanceEntry{
-				UserID: a.WorkerID, Role: "worker", ApplicationID: a.ID, ElonID: a.ElonID,
-				ElonTitle: a.ElonTitle, CounterpartyID: a.EmployerID,
-				Type: "earned", Status: "completed",
-				Amount: a.Amount, IsNegotiable: a.IsNegotiable, CreatedAt: now,
-			})
-			finance = append(finance, models.FinanceEntry{
-				UserID: a.EmployerID, Role: "employer", ApplicationID: a.ID, ElonID: a.ElonID,
-				ElonTitle: a.ElonTitle, CounterpartyID: a.WorkerID,
-				Type: "spent", Status: "completed",
-				Amount: a.Amount, IsNegotiable: a.IsNegotiable, CreatedAt: now,
-			})
-		case "cancelled":
-			finance = append(finance, models.FinanceEntry{
-				UserID: a.WorkerID, Role: "worker", ApplicationID: a.ID, ElonID: a.ElonID,
-				ElonTitle: a.ElonTitle, CounterpartyID: a.EmployerID,
-				Type: "earned", Status: "cancelled", IsNegotiable: a.IsNegotiable, CreatedAt: now,
-			})
-			finance = append(finance, models.FinanceEntry{
-				UserID: a.EmployerID, Role: "employer", ApplicationID: a.ID, ElonID: a.ElonID,
-				ElonTitle: a.ElonTitle, CounterpartyID: a.WorkerID,
-				Type: "spent", Status: "cancelled", IsNegotiable: a.IsNegotiable, CreatedAt: now,
-			})
-		}
+	// ---- feedback (taklif va shikoyatlar) ----
+	feedbacks := []any{}
+	fbSamples := []struct {
+		Type, Subject, Message string
+	}{
+		{"suggestion", "Xarita qulayligi", "Ish joyini xaritadan tanlash juda qulay bo'libdi, rahmat!"},
+		{"complaint", "Bildirishnoma ko'p", "Ba'zida bir xil bildirishnoma ikki marta keladi."},
+		{"suggestion", "To'lov tarixi", "To'lovlar tarixini PDF qilib yuklab olish imkoni bo'lsa yaxshi bo'lardi."},
+		{"suggestion", "Til", "Qoraqalpoq tili ham qo'shilsa zo'r bo'lardi."},
+		{"complaint", "Qidiruv", "Qidiruvda viloyat bo'yicha filtr yetishmayapti."},
+		{"suggestion", "Reyting", "Ishchi va ish beruvchi reytingi alohida ko'rsatilsa aniqroq bo'ladi."},
 	}
-	for len(finance) < 16 {
-		u := users[rand.Intn(len(users))]
-		e := elons[rand.Intn(len(elons))]
-		finance = append(finance, models.FinanceEntry{
-			UserID: u.ID, Role: "worker", ApplicationID: primitive.NewObjectID(),
-			ElonID: e.ID, ElonTitle: e.Title, CounterpartyID: e.OwnerID,
-			Type: "earned", Status: "completed",
-			Amount: int64(50000 + rand.Intn(500000)), IsNegotiable: false, CreatedAt: now,
+	for i, s := range fbSamples {
+		u := users[i%len(users)]
+		status := "open"
+		if i%3 == 0 {
+			status = "resolved"
+		}
+		feedbacks = append(feedbacks, models.Feedback{
+			UserID: u.ID, UserName: u.FirstName + " " + u.LastName, UserPhone: u.Phone,
+			Type: s.Type, Subject: s.Subject, Message: s.Message, Status: status,
+			CreatedAt: now.Add(-time.Duration(rand.Intn(200)) * time.Hour),
 		})
 	}
-	if _, err := mdb.Collection("finance_entries").InsertMany(ctx, finance); err != nil {
-		log.Printf("finance: %v", err)
+	if _, err := mdb.Collection("feedback").InsertMany(ctx, feedbacks); err != nil {
+		log.Printf("feedback: %v", err)
 	}
-	fmt.Printf("finance_entries: %d\n", len(finance))
+	fmt.Printf("feedback: %d\n", len(feedbacks))
 
 	// ---- admins ----
 	admins := []models.Admin{}
@@ -537,23 +458,40 @@ func recomputeRatings(ctx context.Context, mdb *mongo.Database) error {
 		if err != nil {
 			continue
 		}
-		var sum, n int
+		var sum, n, wSum, wN, eSum, eN int
 		for rcur.Next(ctx) {
 			var r models.Review
 			if err := rcur.Decode(&r); err == nil {
 				sum += r.Rating
 				n++
+				switch r.Direction {
+				case "employer_to_worker":
+					wSum += r.Rating
+					wN++
+				case "worker_to_employer":
+					eSum += r.Rating
+					eN++
+				}
 			}
 		}
 		rcur.Close(ctx)
-		avg := 0.0
-		if n > 0 {
-			avg = float64(sum) / float64(n)
-			avg = float64(int(avg*10+0.5)) / 10
-		}
-		_, _ = mdb.Collection("users").UpdateOne(ctx, bson.M{"_id": u.ID}, bson.M{"$set": bson.M{"rating": avg, "reviewsCount": n}})
+		_, _ = mdb.Collection("users").UpdateOne(ctx, bson.M{"_id": u.ID}, bson.M{"$set": bson.M{
+			"rating":               avg1(sum, n),
+			"reviewsCount":         n,
+			"workerRating":         avg1(wSum, wN),
+			"workerReviewsCount":   wN,
+			"employerRating":       avg1(eSum, eN),
+			"employerReviewsCount": eN,
+		}})
 	}
 	return nil
+}
+
+func avg1(sum, n int) float64 {
+	if n == 0 {
+		return 0
+	}
+	return float64(int(float64(sum)/float64(n)*10+0.5)) / 10
 }
 
 func pick(s []string) string { return s[rand.Intn(len(s))] }
@@ -568,8 +506,6 @@ func titleFor(t string) string {
 		return "Arizangiz qabul qilindi"
 	case "application_rejected":
 		return "Arizangiz rad etildi"
-	case "new_message":
-		return "Yangi xabar"
 	case "job_completed_request":
 		return "Tasdiqlash so'rovi"
 	case "job_completed":

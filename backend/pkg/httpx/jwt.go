@@ -33,9 +33,14 @@ func IssueAdminToken(secret, adminID, role string, ttl time.Duration) (string, e
 
 func ParseUserToken(secret, tok string) (string, error) {
 	c := &Claims{}
-	_, err := jwt.ParseWithClaims(tok, c, func(*jwt.Token) (any, error) { return []byte(secret), nil })
+	_, err := jwt.ParseWithClaims(tok, c,
+		func(*jwt.Token) (any, error) { return []byte(secret), nil },
+		jwt.WithValidMethods(allowedJWTMethods))
 	if err != nil {
 		return "", err
+	}
+	if c.UserID == "" {
+		return "", jwt.ErrTokenInvalidClaims
 	}
 	return c.UserID, nil
 }

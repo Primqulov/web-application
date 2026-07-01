@@ -20,6 +20,11 @@ type User struct {
 	Skills              []string           `bson:"skills,omitempty" json:"skills"`
 	Rating              float64            `bson:"rating" json:"rating"`
 	ReviewsCount        int                `bson:"reviewsCount" json:"reviewsCount"`
+	// Ikki tomonlama reyting: ishchi sifatida va ish beruvchi sifatida alohida.
+	WorkerRating         float64           `bson:"workerRating" json:"workerRating"`
+	WorkerReviewsCount   int               `bson:"workerReviewsCount" json:"workerReviewsCount"`
+	EmployerRating       float64           `bson:"employerRating" json:"employerRating"`
+	EmployerReviewsCount int               `bson:"employerReviewsCount" json:"employerReviewsCount"`
 	CompletedJobsCount  int                `bson:"completedJobsCount" json:"completedJobsCount"`
 	IsPhoneVerified     bool               `bson:"isPhoneVerified" json:"isPhoneVerified"`
 	IsPremium           bool               `bson:"isPremium" json:"isPremium"`
@@ -45,6 +50,10 @@ type PublicUser struct {
 	Skills             []string           `json:"skills"`
 	Rating             float64            `json:"rating"`
 	ReviewsCount       int                `json:"reviewsCount"`
+	WorkerRating         float64          `json:"workerRating"`
+	WorkerReviewsCount   int              `json:"workerReviewsCount"`
+	EmployerRating       float64          `json:"employerRating"`
+	EmployerReviewsCount int              `json:"employerReviewsCount"`
 	CompletedJobsCount int                `json:"completedJobsCount"`
 	IsPhoneVerified    bool               `json:"isPhoneVerified"`
 }
@@ -54,6 +63,8 @@ func (u *User) Public() PublicUser {
 		ID: u.ID, FirstName: u.FirstName, LastName: u.LastName, AvatarURL: u.AvatarURL,
 		Region: u.Region, District: u.District, Bio: u.Bio, Skills: u.Skills,
 		Rating: u.Rating, ReviewsCount: u.ReviewsCount,
+		WorkerRating: u.WorkerRating, WorkerReviewsCount: u.WorkerReviewsCount,
+		EmployerRating: u.EmployerRating, EmployerReviewsCount: u.EmployerReviewsCount,
 		CompletedJobsCount: u.CompletedJobsCount, IsPhoneVerified: u.IsPhoneVerified,
 	}
 }
@@ -81,6 +92,9 @@ type Elon struct {
 	Description    string             `bson:"description" json:"description"`
 	LocationURL    string             `bson:"locationUrl,omitempty" json:"locationUrl"`
 	LocationText   string             `bson:"locationText,omitempty" json:"locationText"`
+	// Aniq ish joyi koordinatalari (xaritadan tanlanadi).
+	Lat            float64            `bson:"lat,omitempty" json:"lat"`
+	Lng            float64            `bson:"lng,omitempty" json:"lng"`
 	Region         string             `bson:"region,omitempty" json:"region"`
 	District       string             `bson:"district,omitempty" json:"district"`
 	WorkersNeeded  int                `bson:"workersNeeded" json:"workersNeeded"`
@@ -99,8 +113,9 @@ type Elon struct {
 	CreatedAt      time.Time          `bson:"createdAt" json:"createdAt"`
 	UpdatedAt      time.Time          `bson:"updatedAt" json:"updatedAt"`
 	// Denormalized owner info for fast feed
-	OwnerName   string  `bson:"ownerName,omitempty" json:"ownerName"`
-	OwnerRating float64 `bson:"ownerRating,omitempty" json:"ownerRating"`
+	OwnerName         string  `bson:"ownerName,omitempty" json:"ownerName"`
+	OwnerRating       float64 `bson:"ownerRating,omitempty" json:"ownerRating"`
+	OwnerReviewsCount int     `bson:"ownerReviewsCount,omitempty" json:"ownerReviewsCount"`
 	// Image URLs (stored on S3).
 	Images []string `bson:"images,omitempty" json:"images"`
 }
@@ -113,6 +128,19 @@ type Application struct {
 	WorkerID               primitive.ObjectID `bson:"workerId" json:"workerId"`
 	EmployerID             primitive.ObjectID `bson:"employerId" json:"employerId"`
 	WorkerPhone            string             `bson:"workerPhone" json:"workerPhone"`
+	// Denormalized worker snapshot (ariza tushgan paytdagi holat) — ish beruvchi
+	// nomzodlar ro'yxatini ko'rsatishi uchun.
+	WorkerName         string  `bson:"workerName,omitempty" json:"workerName"`
+	WorkerRating       float64 `bson:"workerRating,omitempty" json:"workerRating"`
+	WorkerReviewsCount int     `bson:"workerReviewsCount,omitempty" json:"workerReviewsCount"`
+	WorkerAvatarURL    string  `bson:"workerAvatarUrl,omitempty" json:"workerAvatarUrl"`
+	WorkerVerified     bool    `bson:"workerVerified,omitempty" json:"workerVerified"`
+	// Denormalized elon snapshot — ishchi o'z arizalari ro'yxatini ko'rsatishi uchun.
+	ElonCategoryName string  `bson:"elonCategoryName,omitempty" json:"elonCategoryName"`
+	ElonRegion       string  `bson:"elonRegion,omitempty" json:"elonRegion"`
+	ElonDistrict     string  `bson:"elonDistrict,omitempty" json:"elonDistrict"`
+	OwnerName        string  `bson:"ownerName,omitempty" json:"ownerName"`
+	OwnerRating      float64 `bson:"ownerRating,omitempty" json:"ownerRating"`
 	Amount                 int64              `bson:"amount" json:"amount"`
 	IsNegotiable           bool               `bson:"isNegotiable" json:"isNegotiable"`
 	Status                 string             `bson:"status" json:"status"` // pending|accepted|rejected|cancelled|completed
@@ -135,36 +163,6 @@ type Review struct {
 	Rating        int                `bson:"rating" json:"rating"`
 	Comment       string             `bson:"comment,omitempty" json:"comment"`
 	CreatedAt     time.Time          `bson:"createdAt" json:"createdAt"`
-}
-
-// Conversation
-type Conversation struct {
-	ID              primitive.ObjectID            `bson:"_id,omitempty" json:"id"`
-	ParticipantIDs  []primitive.ObjectID          `bson:"participantIds" json:"participantIds"`
-	LastMessageText string                        `bson:"lastMessageText" json:"lastMessageText"`
-	LastMessageAt   time.Time                     `bson:"lastMessageAt" json:"lastMessageAt"`
-	LastSenderID    primitive.ObjectID            `bson:"lastSenderId,omitempty" json:"lastSenderId"`
-	Unread          map[string]int                `bson:"unread" json:"unread"`
-	CreatedAt       time.Time                     `bson:"createdAt" json:"createdAt"`
-}
-
-// MessageAttachment is a single file attached to a message.
-type MessageAttachment struct {
-	URL  string `bson:"url" json:"url"`
-	Name string `bson:"name,omitempty" json:"name"`
-	Size int64  `bson:"size,omitempty" json:"size"`
-	Mime string `bson:"mime,omitempty" json:"mime"`
-}
-
-// Message
-type Message struct {
-	ID             primitive.ObjectID  `bson:"_id,omitempty" json:"id"`
-	ConversationID primitive.ObjectID  `bson:"conversationId" json:"conversationId"`
-	SenderID       primitive.ObjectID  `bson:"senderId" json:"senderId"`
-	Text           string              `bson:"text" json:"text"`
-	Attachments    []MessageAttachment `bson:"attachments,omitempty" json:"attachments"`
-	IsRead         bool                `bson:"isRead" json:"isRead"`
-	CreatedAt      time.Time           `bson:"createdAt" json:"createdAt"`
 }
 
 // Notification
@@ -197,20 +195,19 @@ type Report struct {
 	CreatedAt   time.Time          `bson:"createdAt" json:"createdAt"`
 }
 
-// FinanceEntry
-type FinanceEntry struct {
-	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	UserID         primitive.ObjectID `bson:"userId" json:"userId"`
-	Role           string             `bson:"role" json:"role"` // worker|employer
-	ApplicationID  primitive.ObjectID `bson:"applicationId" json:"applicationId"`
-	ElonID         primitive.ObjectID `bson:"elonId" json:"elonId"`
-	ElonTitle      string             `bson:"elonTitle" json:"elonTitle"`
-	CounterpartyID primitive.ObjectID `bson:"counterpartyId" json:"counterpartyId"`
-	Type           string             `bson:"type" json:"type"` // earned|spent
-	Status         string             `bson:"status" json:"status"` // completed|cancelled
-	Amount         int64              `bson:"amount" json:"amount"`
-	IsNegotiable   bool               `bson:"isNegotiable" json:"isNegotiable"`
-	CreatedAt      time.Time          `bson:"createdAt" json:"createdAt"`
+// Feedback — foydalanuvchilardan kelgan taklif va shikoyatlar.
+type Feedback struct {
+	ID         primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	UserID     primitive.ObjectID `bson:"userId" json:"userId"`
+	UserName   string             `bson:"userName,omitempty" json:"userName"`
+	UserPhone  string             `bson:"userPhone,omitempty" json:"userPhone"`
+	Type       string             `bson:"type" json:"type"` // suggestion|complaint
+	Subject    string             `bson:"subject,omitempty" json:"subject"`
+	Message    string             `bson:"message" json:"message"`
+	Status     string             `bson:"status" json:"status"` // open|resolved
+	ReviewedBy primitive.ObjectID `bson:"reviewedBy,omitempty" json:"reviewedBy,omitempty"`
+	ReviewedAt *time.Time         `bson:"reviewedAt,omitempty" json:"reviewedAt,omitempty"`
+	CreatedAt  time.Time          `bson:"createdAt" json:"createdAt"`
 }
 
 // Admin
@@ -240,6 +237,7 @@ type OTPCode struct {
 	Phone      string             `bson:"phone,omitempty"`
 	TelegramID int64              `bson:"telegramId,omitempty"`
 	Code       string             `bson:"code,omitempty"`
+	Attempts   int                `bson:"attempts"`
 	ExpiresAt  time.Time          `bson:"expiresAt"`
 	Used       bool               `bson:"used"`
 	CreatedAt  time.Time          `bson:"createdAt"`

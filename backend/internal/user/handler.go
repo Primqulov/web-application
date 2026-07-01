@@ -56,6 +56,12 @@ func (h *Handler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 		httpx.Err(w, err)
 		return
 	}
+	// avatarUrl is rendered on other users' browsers — reject non-http(s) values
+	// so a javascript:/data: payload can't be stored.
+	if req.AvatarURL != nil && !httpx.IsSafeHTTPURL(*req.AvatarURL) {
+		httpx.Err(w, httpx.NewError(400, "bad_avatar_url", "avatar url must be http(s)"))
+		return
+	}
 	// If avatar is changing, delete the previous file from S3 (best-effort).
 	if req.AvatarURL != nil {
 		var prev models.User

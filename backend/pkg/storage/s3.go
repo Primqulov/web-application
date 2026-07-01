@@ -2,7 +2,7 @@
 // simple Upload / Delete operations used across the application.
 //
 // All uploaded objects live under prefixes derived from their purpose
-// (avatars/, elons/<elonId>/, chat/<conversationId>/), so we can later
+// (avatars/, elons/<elonId>/), so we can later
 // reason about ownership and ACL.
 package storage
 
@@ -30,6 +30,7 @@ type Service struct {
 	presign       *s3.PresignClient
 	bucket        string
 	publicBaseURL string // e.g. https://my-bucket.s3.eu-central-1.amazonaws.com
+	localDir      string // when set and client==nil, store files on local disk
 }
 
 type Config struct {
@@ -111,6 +112,11 @@ func (s *Service) Upload(ctx context.Context, prefix, originalName, contentType 
 		}
 	}
 
+	// Local-disk backend (no S3 configured): write under localDir/<key>.
+	if s.client == nil {
+		return s.writeLocal(key, buf)
+	}
+
 	_, err = s.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(s.bucket),
 		Key:         aws.String(key),
@@ -129,6 +135,9 @@ func (s *Service) Upload(ctx context.Context, prefix, originalName, contentType 
 func (s *Service) Delete(ctx context.Context, key string) error {
 	if key == "" {
 		return nil
+	}
+	if s.client == nil {
+		return s.deleteLocal(key)
 	}
 	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(s.bucket),

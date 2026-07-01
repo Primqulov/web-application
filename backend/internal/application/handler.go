@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -17,20 +18,18 @@ import (
 )
 
 type Handler struct {
-	Apps    *mongo.Collection
-	Elons   *mongo.Collection
-	Users   *mongo.Collection
-	Finance *mongo.Collection
-	Notify  *notification.Service
+	Apps   *mongo.Collection
+	Elons  *mongo.Collection
+	Users  *mongo.Collection
+	Notify *notification.Service
 }
 
 func NewHandler(db *mongo.Database, n *notification.Service) *Handler {
 	return &Handler{
-		Apps:    db.Collection("applications"),
-		Elons:   db.Collection("elons"),
-		Users:   db.Collection("users"),
-		Finance: db.Collection("finance_entries"),
-		Notify:  n,
+		Apps:   db.Collection("applications"),
+		Elons:  db.Collection("elons"),
+		Users:  db.Collection("users"),
+		Notify: n,
 	}
 }
 
@@ -76,6 +75,20 @@ func (h *Handler) Apply(w http.ResponseWriter, r *http.Request) {
 		IsNegotiable: elon.PricingType == "negotiable",
 		Status:       "pending",
 		AppliedAt:    time.Now(),
+		// Elon snapshot (ishchining arizalar ro'yxati uchun).
+		ElonCategoryName: elon.CategoryName,
+		ElonRegion:       elon.Region,
+		ElonDistrict:     elon.District,
+		OwnerName:        elon.OwnerName,
+		OwnerRating:      elon.OwnerRating,
+	}
+	if worker != nil {
+		// Worker snapshot (ish beruvchining nomzodlar ro'yxati uchun).
+		app.WorkerName = strings.TrimSpace(worker.FirstName + " " + worker.LastName)
+		app.WorkerRating = worker.WorkerRating
+		app.WorkerReviewsCount = worker.WorkerReviewsCount
+		app.WorkerAvatarURL = worker.AvatarURL
+		app.WorkerVerified = worker.IsPhoneVerified
 	}
 	res, err := h.Apps.InsertOne(r.Context(), app)
 	if err != nil {
@@ -183,8 +196,6 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 		if elon.Status == "filled" && elon.AcceptedCount < elon.WorkersNeeded {
 			_, _ = h.Elons.UpdateOne(r.Context(), bson.M{"_id": elon.ID}, bson.M{"$set": bson.M{"status": "recruiting"}})
 		}
-		// write cancelled finance entries (no amount, both sides)
-		writeCancelledFinance(r.Context(), h.Finance, app)
 	}
 	// notify the other party
 	other := app.EmployerID
@@ -238,8 +249,6 @@ func (h *Handler) ConfirmDone(w http.ResponseWriter, r *http.Request) {
 		// bump completedJobsCount on both users
 		_, _ = h.Users.UpdateOne(r.Context(), bson.M{"_id": app.WorkerID}, bson.M{"$inc": bson.M{"completedJobsCount": 1}})
 		_, _ = h.Users.UpdateOne(r.Context(), bson.M{"_id": app.EmployerID}, bson.M{"$inc": bson.M{"completedJobsCount": 1}})
-		// finance entries
-		writeCompletedFinance(r.Context(), h.Finance, app)
 		// notify both
 		h.Notify.Push(r.Context(), app.WorkerID, "job_completed", "Ish yakunlandi", app.ElonTitle, &models.RelatedEntity{Type: "application", ID: appID})
 		h.Notify.Push(r.Context(), app.EmployerID, "job_completed", "Ish yakunlandi", app.ElonTitle, &models.RelatedEntity{Type: "application", ID: appID})
@@ -322,48 +331,4 @@ func loadUser(ctx context.Context, col *mongo.Collection, id primitive.ObjectID)
 		return nil, errors.New("not_found")
 	}
 	return &u, nil
-}
-
-func writeCompletedFinance(ctx context.Context, col *mongo.Collection, app models.Application) {
-	now := time.Now()
-	_, _ = col.InsertOne(ctx, models.FinanceEntry{
-		UserID:         app.WorkerID,
-		Role:           "worker",
-		ApplicationID:  app.ID,
-		ElonID:         app.ElonID,
-		ElonTitle:      app.ElonTitle,
-		CounterpartyID: app.EmployerID,
-		Type:           "earned",
-		Status:         "completed",
-		Amount:         app.Amount,
-		IsNegotiable:   app.IsNegotiable,
-		CreatedAt:      now,
-	})
-	_, _ = col.InsertOne(ctx, models.FinanceEntry{
-		UserID:         app.EmployerID,
-		Role:           "employer",
-		ApplicationID:  app.ID,
-		ElonID:         app.ElonID,
-		ElonTitle:      app.ElonTitle,
-		CounterpartyID: app.WorkerID,
-		Type:           "spent",
-		Status:         "completed",
-		Amount:         app.Amount,
-		IsNegotiable:   app.IsNegotiable,
-		CreatedAt:      now,
-	})
-}
-
-func writeCancelledFinance(ctx context.Context, col *mongo.Collection, app models.Application) {
-	now := time.Now()
-	_, _ = col.InsertOne(ctx, models.FinanceEntry{
-		UserID: app.WorkerID, Role: "worker", ApplicationID: app.ID, ElonID: app.ElonID,
-		ElonTitle: app.ElonTitle, CounterpartyID: app.EmployerID, Type: "earned",
-		Status: "cancelled", IsNegotiable: app.IsNegotiable, CreatedAt: now,
-	})
-	_, _ = col.InsertOne(ctx, models.FinanceEntry{
-		UserID: app.EmployerID, Role: "employer", ApplicationID: app.ID, ElonID: app.ElonID,
-		ElonTitle: app.ElonTitle, CounterpartyID: app.WorkerID, Type: "spent",
-		Status: "cancelled", IsNegotiable: app.IsNegotiable, CreatedAt: now,
-	})
 }

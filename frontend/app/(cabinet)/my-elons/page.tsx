@@ -2,10 +2,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, Plus, FileText, Send, Archive, ListChecks } from "lucide-react";
+import { Pencil, Trash2, Plus, Archive, ListChecks } from "lucide-react";
 import { api, Elon } from "@/lib/api";
 import { Shell, ShellSearch } from "@/components/Shell";
-import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -14,12 +13,12 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { T, useT } from "@/components/T";
 import { fmtSumSom, fromNow } from "@/lib/format";
 
-type MyElons = { drafts: Elon[]; active: Elon[]; archived: Elon[] };
+type MyElons = { active: Elon[]; archived: Elon[] };
 
 export default function MyElons() {
   const t = useT();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"drafts" | "active" | "archived">("active");
+  const [tab, setTab] = useState<"active" | "archived">("active");
   const [q, setQ] = useState("");
 
   const { data, isLoading } = useQuery<MyElons>({
@@ -27,25 +26,20 @@ export default function MyElons() {
     queryFn: () => api.get<MyElons>("/api/my/elons"),
   });
 
-  const publish = useMutation({
-    mutationFn: (id: string) => api.post(`/api/elons/${id}/publish`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["my-elons"] }),
-  });
   const del = useMutation({
     mutationFn: (id: string) => api.delete(`/api/elons/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["my-elons"] }),
   });
 
-  const counts = { drafts: data?.drafts.length ?? 0, active: data?.active.length ?? 0, archived: data?.archived.length ?? 0 };
+  const counts = { active: data?.active.length ?? 0, archived: data?.archived.length ?? 0 };
   const list = (data?.[tab] || []).filter((e) => !q || e.title.toLowerCase().includes(q.toLowerCase()));
   const search = <ShellSearch value={q} onChange={setQ} placeholder={t("E'lon nomi bo'yicha qidirish…")} />;
 
   return (
     <Shell title="Mening e'lonlarim" search={search}>
       {/* Stat row */}
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid sm:grid-cols-2 gap-3">
         <StatCard label="Faol e'lonlar" value={counts.active} icon={<ListChecks size={18} />} />
-        <StatCard label="Qoralama" value={counts.drafts} icon={<FileText size={18} />} />
         <StatCard label="Arxivlangan" value={counts.archived} icon={<Archive size={18} />} />
       </div>
 
@@ -56,7 +50,6 @@ export default function MyElons() {
           onChange={(v) => setTab(v as any)}
           items={[
             { value: "active",   label: t("Faol"),    count: counts.active },
-            { value: "drafts",   label: t("Qoralama"), count: counts.drafts },
             { value: "archived", label: t("Arxiv"),    count: counts.archived },
           ]}
         />
@@ -73,8 +66,7 @@ export default function MyElons() {
           icon={<ListChecks size={22} />}
           title={t("Hozircha e'lon yo'q")}
           body={
-            tab === "drafts" ? t("Qoralama e'lonlaringiz shu yerda saqlanadi.")
-            : tab === "archived" ? t("Yakunlangan yoki bekor qilingan e'lonlar shu yerda ko'rinadi.")
+            tab === "archived" ? t("Yakunlangan yoki bekor qilingan e'lonlar shu yerda ko'rinadi.")
             : t("Birinchi e'loningizni yarating va arizalarni qabul qila boshlang.")
           }
           action={<Link href="/elon/create" className="btn btn-primary"><T>E'lon yaratish</T></Link>}
@@ -92,7 +84,7 @@ export default function MyElons() {
                     <Pencil size={14} className="muted" />
                   </Link>
                   <button
-                    onClick={() => { if (confirm(t("Haqiqatan o'chirishni xohlaysizmi?"))) del.mutate(e.id); }}
+                    onClick={() => { if (confirm(t("E'lon butunlay o'chiriladi va qayta tiklab bo'lmaydi. Davom etasizmi?"))) del.mutate(e.id); }}
                     className="p-1.5 rounded-md hover:bg-danger-bg text-danger" aria-label="Delete"
                   >
                     <Trash2 size={14} />
@@ -113,11 +105,6 @@ export default function MyElons() {
                     {fmtSumSom(e.perWorkerAmount || e.priceAmount, e.pricingType === "negotiable")}
                   </div>
                 </div>
-                {tab === "drafts" && (
-                  <Button size="sm" leftIcon={<Send size={13} />} onClick={() => publish.mutate(e.id)} loading={publish.isPending}>
-                    <T>Joylashtirish</T>
-                  </Button>
-                )}
               </div>
             </Card>
           ))}

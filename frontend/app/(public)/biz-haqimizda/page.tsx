@@ -121,7 +121,7 @@ export default function AboutPage() {
             <FeatureRow
               icon={<HandHeart size={22} className="text-danger" />}
               title="To'g'ridan-to'g'ri aloqa"
-              body="Vositachilarsiz — telefon va chat orqali bevosita ishchi yoki ish beruvchi bilan gaplashing."
+              body="Vositachilarsiz — telefon orqali bevosita ishchi yoki ish beruvchi bilan gaplashing."
             />
             <FeatureRow
               icon={<Users size={22} className="text-tg-blue" />}

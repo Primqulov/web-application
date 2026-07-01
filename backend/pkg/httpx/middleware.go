@@ -18,6 +18,17 @@ const (
 	CtxAdminRole ctxKey = "adminRole"
 )
 
+// TrustProxyHeaders controls whether the X-Forwarded-For header is honored when
+// determining the client IP (used for rate limiting). It MUST stay false unless
+// the service runs behind a trusted reverse proxy that overwrites the header;
+// otherwise a client can spoof XFF to get an unlimited number of rate-limit
+// buckets and defeat brute-force protection. Set from config at startup.
+var TrustProxyHeaders = false
+
+// allowedJWTMethods pins token verification to HMAC-SHA256, preventing
+// algorithm-confusion / "alg:none" downgrade attacks.
+var allowedJWTMethods = []string{"HS256"}
+
 type Claims struct {
 	UserID string `json:"uid"`
 	jwt.RegisteredClaims
@@ -38,7 +49,9 @@ func UserAuth(secret string) func(http.Handler) http.Handler {
 				return
 			}
 			c := &Claims{}
-			_, err := jwt.ParseWithClaims(tok, c, func(*jwt.Token) (any, error) { return []byte(secret), nil })
+			_, err := jwt.ParseWithClaims(tok, c,
+				func(*jwt.Token) (any, error) { return []byte(secret), nil },
+				jwt.WithValidMethods(allowedJWTMethods))
 			if err != nil || c.UserID == "" {
 				Err(w, NewError(http.StatusUnauthorized, "bad_token", "invalid token"))
 				return
@@ -58,7 +71,9 @@ func AdminAuth(secret string) func(http.Handler) http.Handler {
 				return
 			}
 			c := &AdminClaims{}
-			_, err := jwt.ParseWithClaims(tok, c, func(*jwt.Token) (any, error) { return []byte(secret), nil })
+			_, err := jwt.ParseWithClaims(tok, c,
+				func(*jwt.Token) (any, error) { return []byte(secret), nil },
+				jwt.WithValidMethods(allowedJWTMethods))
 			if err != nil || c.AdminID == "" {
 				Err(w, NewError(http.StatusUnauthorized, "bad_token", "invalid token"))
 				return
@@ -101,6 +116,20 @@ func Recover(next http.Handler) http.Handler {
 				JSON(w, http.StatusInternalServerError, errBody{Error: APIError{Code: "panic", Message: "internal server error"}})
 			}
 		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+// SecurityHeaders sets conservative response headers. The API serves JSON only,
+// so a strict CSP plus nosniff/frame-deny costs nothing and blocks a range of
+// content-type confusion and clickjacking issues.
+func SecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "no-referrer")
+		h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -160,11 +189,16 @@ func (l *Limiter) Middleware(prefix string) func(http.Handler) http.Handler {
 }
 
 func clientIP(r *http.Request) string {
-	if v := r.Header.Get("X-Forwarded-For"); v != "" {
-		if i := strings.IndexByte(v, ','); i > 0 {
-			return strings.TrimSpace(v[:i])
+	// Only trust the forwarded header when explicitly configured to run behind a
+	// trusted proxy. Otherwise an attacker can rotate XFF to mint a fresh
+	// rate-limit bucket per request and bypass brute-force protection.
+	if TrustProxyHeaders {
+		if v := r.Header.Get("X-Forwarded-For"); v != "" {
+			if i := strings.IndexByte(v, ','); i > 0 {
+				return strings.TrimSpace(v[:i])
+			}
+			return strings.TrimSpace(v)
 		}
-		return v
 	}
 	host := r.RemoteAddr
 	if i := strings.LastIndexByte(host, ':'); i > 0 {

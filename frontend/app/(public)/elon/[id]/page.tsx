@@ -5,16 +5,19 @@ import Link from "next/link";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Info, Users, Calendar, MapPin, FileText, Wallet, ShieldCheck,
-  Phone, Send, Share2, UserRound,
+  Phone, Send, Share2, UserRound, Image as ImageIcon,
 } from "lucide-react";
 import { api, Elon, getAccess } from "@/lib/api";
 import { Modal } from "@/components/Modal";
+import { ShareModal } from "@/components/ShareModal";
+import { MapView } from "@/components/ui/MapView";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Shell } from "@/components/Shell";
 import { ScriptToggle } from "@/components/ScriptToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { T, useT } from "@/components/T";
-import { fmtSumSom } from "@/lib/format";
+import { fmtSumSom, fmtPhone } from "@/lib/format";
+import { safeHref } from "@/lib/url";
 import dayjs from "dayjs";
 
 export default function ElonDetails() {
@@ -22,6 +25,7 @@ export default function ElonDetails() {
   const router = useRouter();
   const t = useT();
   const [open, setOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [phone, setPhone] = useState("");
   const [status, setStatus] = useState<"none" | "pending" | "accepted">("none");
   const [me, setMe] = useState<any>(null);
@@ -31,7 +35,7 @@ export default function ElonDetails() {
     const has = !!getAccess();
     setAuthed(has);
     if (has) {
-      api.get<any>("/api/me").then((u) => { setMe(u); setPhone(u.phone || ""); }).catch(() => {});
+      api.get<any>("/api/me").then((u) => { setMe(u); setPhone(u.phone ? fmtPhone(u.phone) : ""); }).catch(() => {});
       api.get<any[]>("/api/my/applications").then((apps) => {
         const mine = apps.find((a) => a.elonId === id);
         if (mine) setStatus(mine.status === "accepted" ? "accepted" : mine.status === "pending" ? "pending" : "none");
@@ -61,9 +65,7 @@ export default function ElonDetails() {
   const dateLine = e.startDate
     ? `${dayjs(e.startDate).format("D-MMM")}${e.workTimeFrom ? `, ${e.workTimeFrom}` : ""}${e.workTimeTo ? ` - ${e.workTimeTo}` : ""}`
     : "—";
-  const mapImg = e.locationUrl
-    ? `https://staticmap.openstreetmap.de/staticmap.php?center=41.2995,69.2401&zoom=13&size=300x200&markers=41.2995,69.2401,red-circle`
-    : "";
+  const hasCoords = !!(e.lat && e.lng);
 
   /* ── inner content (shared between auth/anon) ── */
   const content = (
@@ -88,21 +90,22 @@ export default function ElonDetails() {
           <h2 className="font-semibold heading flex items-center gap-2 mb-4">
             <MapPin size={18} /><T>Manzil</T>
           </h2>
-          <div className="grid sm:grid-cols-[180px_1fr] gap-4">
-            {e.locationUrl ? (
-              <a href={e.locationUrl} target="_blank" rel="noreferrer" className="block rounded-xl overflow-hidden border h-[120px] bg-[color:var(--bg)]" style={{ borderColor: "var(--border)" }}>
-                {mapImg && (<img src={mapImg} alt="map" className="w-full h-full object-cover" />)}
-                {!mapImg && (<div className="w-full h-full grid place-items-center muted text-sm"><T>Xaritani ochish</T></div>)}
+          <div className="grid gap-3">
+            <div className="font-semibold flex items-center gap-1.5">
+              <MapPin size={15} className="muted" />
+              <T>{e.region || "Manzil ko'rsatilmagan"}</T>{e.district ? <span className="muted font-normal">, <T>{e.district}</T></span> : null}
+            </div>
+            {hasCoords ? (
+              <MapView lat={e.lat!} lng={e.lng!} label={e.title} height={220} />
+            ) : safeHref(e.locationUrl) ? (
+              <a href={safeHref(e.locationUrl)} target="_blank" rel="noreferrer" className="text-sm text-tg-blue underline">
+                <T>Xaritada ochish</T>
               </a>
             ) : (
               <div className="rounded-xl border h-[120px] grid place-items-center muted text-sm" style={{ borderColor: "var(--border)" }}>
                 <MapPin size={24} />
               </div>
             )}
-            <div className="flex flex-col justify-center">
-              <div className="font-semibold"><T>{e.locationText || e.region || "Manzil ko'rsatilmagan"}</T></div>
-              {e.district && <div className="text-sm muted"><T>{e.district}</T></div>}
-            </div>
           </div>
         </section>
 
@@ -115,6 +118,30 @@ export default function ElonDetails() {
             <T>{e.description}</T>
           </p>
         </section>
+
+        {/* Rasmlar */}
+        {e.images && e.images.length > 0 && (
+          <section className="card p-5">
+            <h2 className="font-semibold heading flex items-center gap-2 mb-4">
+              <ImageIcon size={18} /><T>Rasmlar</T>
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {e.images.map((src, i) => (
+                <a
+                  key={src}
+                  href={src}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="relative aspect-square rounded-xl overflow-hidden border block"
+                  style={{ borderColor: "var(--border)" }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt={`${e.title} ${i + 1}`} className="w-full h-full object-cover hover:scale-105 transition" />
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
 
       {/* ── Right column ────────────── */}
@@ -176,12 +203,14 @@ export default function ElonDetails() {
           </>
         )}
         <button
-          onClick={() => navigator.share?.({ url: location.href, title: e.title }).catch(() => {})}
+          onClick={() => setShareOpen(true)}
           className="w-full rounded-lg py-3 bg-accent-amber text-white font-medium inline-flex items-center justify-center gap-2 hover:opacity-90"
         >
           <Share2 size={16} /><T>Ulashish</T>
         </button>
       </aside>
+
+      <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} path={`/elon/${id}`} title={e.title} />
 
       <Modal open={open} onClose={() => setOpen(false)} title={t("Ariza topshirishni tasdiqlaysizmi?")} footer={
         <>
@@ -192,7 +221,7 @@ export default function ElonDetails() {
         <p className="text-sm muted mb-3"><T>{e.title}</T> — {fmtSumSom(e.perWorkerAmount, e.pricingType === "negotiable")} / <T>kishi boshiga</T></p>
         <label className="block">
           <span className="text-sm font-medium"><T>TELEFON RAQAMINGIZ</T></span>
-          <input className="input mt-1" value={phone} onChange={(ev) => setPhone(ev.target.value)} placeholder="+998 ..." />
+          <input className="input mt-1" inputMode="numeric" value={phone} onChange={(ev) => setPhone(fmtPhone(ev.target.value))} placeholder="+998 90 020 25 35" />
         </label>
       </Modal>
     </div>

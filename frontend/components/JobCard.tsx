@@ -1,18 +1,22 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { Star, MapPin, Clock, Share2 } from "lucide-react";
 import { Elon } from "@/lib/api";
 import { fmtSumSom, fromNow } from "@/lib/format";
+import { ShareModal } from "./ShareModal";
 import { T } from "./T";
 
 export function JobCard({ e }: { e: Elon }) {
   const negotiable = e.pricingType === "negotiable";
+  const [shareOpen, setShareOpen] = useState(false);
   return (
+    <>
     <Link href={`/elon/${e.id}`} className="card block p-4 hover:shadow-md transition">
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-semibold text-base"><T>{e.title}</T></h3>
         <button
-          onClick={(ev) => { ev.preventDefault(); navigator.share?.({ url: location.origin + `/elon/${e.id}`, title: e.title }).catch(() => {}); }}
+          onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setShareOpen(true); }}
           className="text-accent-amber hover:opacity-80"
           aria-label="Ulashish"
         >
@@ -26,7 +30,7 @@ export function JobCard({ e }: { e: Elon }) {
         <span>{e.ownerName || "Foydalanuvchi"}</span>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[color:var(--text-muted)]">
-        {e.locationText && (<span className="inline-flex items-center gap-1"><MapPin size={14} />{e.locationText}</span>)}
+        {(e.region || e.locationText) && (<span className="inline-flex items-center gap-1"><MapPin size={14} /><T>{[e.region, e.district].filter(Boolean).join(", ") || e.locationText || ""}</T></span>)}
         {e.publishedAt && (<span className="inline-flex items-center gap-1"><Clock size={14} />{fromNow(e.publishedAt)}</span>)}
       </div>
       <div className="mt-3 flex items-center justify-between">
@@ -38,5 +42,7 @@ export function JobCard({ e }: { e: Elon }) {
         </span>
       </div>
     </Link>
+    <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} path={`/elon/${e.id}`} title={e.title} />
+    </>
   );
 }

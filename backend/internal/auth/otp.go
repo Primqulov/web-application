@@ -11,8 +11,12 @@ import (
 	"github.com/ishchibormi/backend/internal/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+// maxOTPAttempts is the number of wrong code guesses allowed against a single
+// OTP record before it is invalidated. This bounds online brute-force of the
+// 6-digit code even if an attacker knows the bound token/phone.
+const maxOTPAttempts = 5
 
 type OTPRepo struct {
 	Col *mongo.Collection
@@ -71,12 +75,22 @@ func (r *OTPRepo) BindPhoneAndIssueCode(ctx context.Context, token, phone string
 }
 
 // VerifyByToken: web-side verification using token + code, returns the bound (phone, tgID).
+// Only succeeds while the record still has attempts remaining; every wrong guess
+// burns one attempt, and after maxOTPAttempts the code is invalidated.
 func (r *OTPRepo) VerifyByToken(ctx context.Context, token, code string) (string, int64, error) {
 	now := time.Now()
 	res := r.Col.FindOneAndUpdate(ctx,
-		bson.M{"tgToken": token, "code": code, "used": false, "expiresAt": bson.M{"$gt": now}},
+		// $not/$gte (rather than $lt) so records written without an "attempts"
+		// field (missing == 0 attempts) still match.
+		bson.M{"tgToken": token, "code": code, "used": false, "expiresAt": bson.M{"$gt": now},
+			"attempts": bson.M{"$not": bson.M{"$gte": maxOTPAttempts}}},
 		bson.M{"$set": bson.M{"used": true}})
 	if err := res.Err(); err != nil {
+		// Wrong/expired code: charge one attempt against the live record so the
+		// code locks out after maxOTPAttempts guesses.
+		_, _ = r.Col.UpdateOne(ctx,
+			bson.M{"tgToken": token, "used": false, "expiresAt": bson.M{"$gt": now}},
+			bson.M{"$inc": bson.M{"attempts": 1}})
 		return "", 0, errors.New("invalid_or_expired_code")
 	}
 	var doc models.OTPCode
@@ -88,34 +102,18 @@ func (r *OTPRepo) VerifyByToken(ctx context.Context, token, code string) (string
 
 // VerifyByPhone: alternative verification path (when web has no token).
 func (r *OTPRepo) VerifyByPhone(ctx context.Context, phone, code string) (string, int64, error) {
-	now := time.Now()
-	res := r.Col.FindOneAndUpdate(ctx,
-		bson.M{"phone": phone, "code": code, "used": false, "expiresAt": bson.M{"$gt": now}},
-		bson.M{"$set": bson.M{"used": true}})
-	if err := res.Err(); err != nil {
+	if phone == "" {
 		return "", 0, errors.New("invalid_or_expired_code")
 	}
-	var doc models.OTPCode
-	if err := res.Decode(&doc); err != nil {
-		return "", 0, err
-	}
-	return doc.Phone, doc.TelegramID, nil
-}
-
-// VerifyByCode: fallback path that matches the most recent unused record by
-// code only. Covers the case where the user typed /start in the bot without
-// the deep-link token, or the Telegram client didn't pass the start argument.
-// We still require the bot to have written a phone+code pair, so the record
-// must have a non-empty phone.
-func (r *OTPRepo) VerifyByCode(ctx context.Context, code string) (string, int64, error) {
 	now := time.Now()
-	opts := options.FindOneAndUpdate().SetSort(bson.D{{Key: "createdAt", Value: -1}})
 	res := r.Col.FindOneAndUpdate(ctx,
-		bson.M{"code": code, "used": false, "expiresAt": bson.M{"$gt": now}, "phone": bson.M{"$ne": ""}},
-		bson.M{"$set": bson.M{"used": true}},
-		opts,
-	)
+		bson.M{"phone": phone, "code": code, "used": false, "expiresAt": bson.M{"$gt": now},
+			"attempts": bson.M{"$not": bson.M{"$gte": maxOTPAttempts}}},
+		bson.M{"$set": bson.M{"used": true}})
 	if err := res.Err(); err != nil {
+		_, _ = r.Col.UpdateOne(ctx,
+			bson.M{"phone": phone, "used": false, "expiresAt": bson.M{"$gt": now}},
+			bson.M{"$inc": bson.M{"attempts": 1}})
 		return "", 0, errors.New("invalid_or_expired_code")
 	}
 	var doc models.OTPCode

@@ -3,6 +3,7 @@ package httpx
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 )
 
@@ -39,11 +40,20 @@ func Err(w http.ResponseWriter, err error) {
 		JSON(w, he.Status, errBody{Error: APIError{Code: he.Code, Message: he.Message}})
 		return
 	}
-	JSON(w, http.StatusInternalServerError, errBody{Error: APIError{Code: "internal", Message: err.Error()}})
+	// Don't leak internal error details (driver/DB messages, stack info) to
+	// clients. Log server-side, return a generic message.
+	log.Printf("internal error: %v", err)
+	JSON(w, http.StatusInternalServerError, errBody{Error: APIError{Code: "internal", Message: "internal server error"}})
 }
 
+// maxJSONBody caps JSON request bodies to guard against memory-exhaustion DoS.
+// File uploads use ParseMultipartForm with their own larger limits and never
+// go through Decode, so they are unaffected.
+const maxJSONBody = 1 << 20 // 1 MiB
+
 func Decode(r *http.Request, v any) error {
-	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+	limited := http.MaxBytesReader(nil, r.Body, maxJSONBody)
+	if err := json.NewDecoder(limited).Decode(v); err != nil {
 		return NewError(http.StatusBadRequest, "invalid_json", "invalid JSON body")
 	}
 	return nil

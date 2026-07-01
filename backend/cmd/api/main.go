@@ -18,9 +18,8 @@ import (
 	"github.com/ishchibormi/backend/internal/application"
 	"github.com/ishchibormi/backend/internal/auth"
 	"github.com/ishchibormi/backend/internal/category"
-	"github.com/ishchibormi/backend/internal/chat"
 	"github.com/ishchibormi/backend/internal/elon"
-	"github.com/ishchibormi/backend/internal/finance"
+	"github.com/ishchibormi/backend/internal/feedback"
 	"github.com/ishchibormi/backend/internal/notification"
 	"github.com/ishchibormi/backend/internal/report"
 	"github.com/ishchibormi/backend/internal/review"
@@ -51,9 +50,7 @@ func main() {
 	}
 
 	// services
-	hub := chat.NewHub()
 	notif := notification.New(mdb)
-	notif.AttachPusher(hub)
 
 	// S3 storage — optional. If creds aren't set, upload endpoints return 503.
 	var s3svc *storage.Service
@@ -69,7 +66,15 @@ func main() {
 			log.Info("s3 ready", "bucket", cfg.AWSS3Bucket, "region", cfg.AWSRegion)
 		}
 	} else {
-		log.Warn("s3 disabled: AWS_S3_BUCKET not set")
+		// No S3 configured — fall back to local-disk storage so uploads work
+		// out of the box. Files are written under cfg.UploadDir and served by
+		// this API at cfg.UploadPublicBase (see the /uploads/* route below).
+		s3svc, err = storage.NewLocal(cfg.UploadDir, cfg.UploadPublicBase)
+		if err != nil {
+			log.Warn("local storage init failed", "err", err)
+		} else {
+			log.Info("local storage ready", "dir", cfg.UploadDir, "base", cfg.UploadPublicBase)
+		}
 	}
 
 	authH := auth.NewHandler(cfg, mdb)
@@ -78,17 +83,24 @@ func main() {
 	elonH := elon.NewHandler(mdb, s3svc)
 	appH := application.NewHandler(mdb, notif)
 	revH := review.NewHandler(mdb, notif)
-	finH := finance.NewHandler(mdb)
 	repH := report.NewHandler(mdb)
-	chatH := chat.NewHandler(mdb, hub, notif, cfg)
+	fbH := feedback.NewHandler(mdb)
 	uploadH := upload.NewHandler(s3svc)
 	adminH := admin.NewHandler(cfg, mdb, notif, s3svc)
 
+	// Rate limiting keys off the real client IP. Only trust forwarding headers
+	// when explicitly configured to sit behind a trusted proxy; otherwise XFF is
+	// spoofable and defeats the limiter.
+	httpx.TrustProxyHeaders = cfg.TrustProxyHeaders
+
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
+	if cfg.TrustProxyHeaders {
+		r.Use(middleware.RealIP)
+	}
 	r.Use(middleware.Logger)
 	r.Use(httpx.Recover)
+	r.Use(httpx.SecurityHeaders)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   cfg.CORSOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
@@ -98,10 +110,18 @@ func main() {
 	}))
 
 	otpLimiter := httpx.NewLimiter(10, 0.5)   // 10 burst, 1 / 2s
-	chatLimiter := httpx.NewLimiter(60, 2)    // 60 burst, 2 / s
 	applyLimiter := httpx.NewLimiter(20, 0.5) // 20 burst, slow refill
+	loginLimiter := httpx.NewLimiter(8, 0.2)  // 8 burst, 1 / 5s — throttles credential brute-force
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) { httpx.JSON(w, 200, map[string]string{"status": "ok"}) })
+
+	// Serve locally-stored uploads (only when running without S3). Public, no
+	// auth — these are image URLs embedded in elons/avatars.
+	if s3svc != nil && s3svc.LocalDir() != "" {
+		fs := http.StripPrefix("/uploads/", http.FileServer(http.Dir(s3svc.LocalDir())))
+		r.Get("/uploads/*", fs.ServeHTTP)
+		r.Head("/uploads/*", fs.ServeHTTP)
+	}
 
 	r.Route("/api", func(r chi.Router) {
 		// Public auth
@@ -121,24 +141,22 @@ func main() {
 		r.Get("/categories", catH.List)
 		r.Get("/users/{id}/reviews", revH.ListForUser)
 
-		// WS (public — token comes via ?token=)
-		r.Get("/ws", chatH.WS)
-
 		// Auth-protected
 		r.Group(func(r chi.Router) {
 			r.Use(httpx.UserAuth(cfg.JWTAccessSecret))
+			r.Use(auth.RequireActiveUser(authH.Users()))
 
 			r.Get("/me", userH.Me)
 			r.Patch("/me", userH.UpdateMe)
 			r.Post("/users/{id}/block", userH.Block)
 			r.Delete("/users/{id}/block", userH.Unblock)
 
-			r.Post("/categories", catH.Create)
+			// Turkumlarni faqat tizim/admin belgilaydi — oddiy foydalanuvchi
+			// yangi turkum qo'sha olmaydi (turkumlar oldindan beriladi).
 
 			r.Post("/elons", elonH.Create)
 			r.Patch("/elons/{id}", elonH.Update)
 			r.Delete("/elons/{id}", elonH.Delete)
-			r.Post("/elons/{id}/publish", elonH.Publish)
 			r.Get("/my/elons", elonH.MyElons)
 
 			r.Group(func(r chi.Router) {
@@ -154,20 +172,15 @@ func main() {
 			r.Get("/my/applications", appH.MyApplications)
 			r.Get("/my/elons/applications", appH.MyElonsApplications)
 			r.Get("/me/history", appH.History)
-			r.Get("/me/finance", finH.Me)
-
-			r.Get("/conversations", chatH.ListConversations)
-			r.Post("/conversations", chatH.StartConversation)
-			r.Get("/conversations/{id}/messages", chatH.ListMessages)
-			r.Group(func(r chi.Router) {
-				r.Use(chatLimiter.Middleware("chat"))
-				r.Post("/conversations/{id}/messages", chatH.SendMessage)
-			})
 
 			r.Get("/notifications", notif.List)
 			r.Post("/notifications/read-all", notif.ReadAll)
 
 			r.Post("/reports", repH.Create)
+
+			// Taklif va shikoyatlar
+			r.Post("/feedback", fbH.Create)
+			r.Get("/feedback", fbH.Mine)
 
 			// Uploads
 			r.Post("/uploads", uploadH.Upload)
@@ -175,7 +188,7 @@ func main() {
 		})
 
 		// Admin
-		r.Post("/admin/login", adminH.Login)
+		r.With(loginLimiter.Middleware("admin-login")).Post("/admin/login", adminH.Login)
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(httpx.AdminAuth(cfg.JWTAccessSecret))
 			r.Get("/dashboard", adminH.Dashboard)
@@ -188,6 +201,8 @@ func main() {
 			r.Patch("/categories/{id}/active", adminH.SetCategoryActive)
 			r.Get("/reports", repH.ListAdmin)
 			r.Patch("/reports/{id}/resolve", repH.Resolve)
+			r.Get("/feedback", fbH.ListAdmin)
+			r.Patch("/feedback/{id}/resolve", fbH.Resolve)
 			r.Post("/broadcast", adminH.Broadcast)
 			r.Get("/audit", adminH.Audit)
 		})

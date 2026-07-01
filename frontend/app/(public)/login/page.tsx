@@ -68,7 +68,7 @@ export default function LoginPage() {
             <ul className="mt-6 grid gap-3">
               <Feature icon={<ShieldCheck size={16} />} title="Tasdiqlangan profillar" body="Har bir foydalanuvchi telefon raqami orqali tasdiqlangan." />
               <Feature icon={<Clock size={16} />} title="Tez login" body="Faqat 6 xonali kod — parol talab qilinmaydi." />
-              <Feature icon={<MessageSquareText size={16} />} title="To'g'ridan-to'g'ri aloqa" body="Vositachilarsiz — chat yoki telefon orqali bog'laning." />
+              <Feature icon={<MessageSquareText size={16} />} title="To'g'ridan-to'g'ri aloqa" body="Vositachilarsiz — telefon orqali bevosita bog'laning." />
             </ul>
           </div>
 

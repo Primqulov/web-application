@@ -4,6 +4,8 @@ package upload
 
 import (
 	"context"
+	"io"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -26,10 +28,9 @@ var allowed = map[string]struct {
 }{
 	"avatar":     {prefix: "avatars",      mimes: []string{"image/jpeg", "image/png", "image/webp"}, maxBytes: 5 << 20},
 	"elon":       {prefix: "elons",        mimes: []string{"image/jpeg", "image/png", "image/webp"}, maxBytes: 8 << 20},
-	"chat":       {prefix: "chat",         mimes: []string{"image/jpeg", "image/png", "image/webp", "application/pdf", "application/zip"}, maxBytes: 20 << 20},
 }
 
-// POST /api/uploads?kind=avatar|elon|chat   (multipart form, field: "file")
+// POST /api/uploads?kind=avatar|elon   (multipart form, field: "file")
 // Returns: {key, url}
 func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	if h.Storage == nil {
@@ -65,9 +66,22 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ct := header.Header.Get("Content-Type")
-	if ct == "" {
-		ct = guessContentType(header.Filename)
+	// Determine the real content type by sniffing the file bytes rather than
+	// trusting the client-supplied multipart Content-Type header (which can be
+	// forged to smuggle an HTML/SVG/script payload past the allow-list).
+	sniff := make([]byte, 512)
+	n, _ := io.ReadFull(file, sniff)
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		httpx.Err(w, httpx.NewError(400, "no_file", "fayl o'qib bo'lmadi"))
+		return
+	}
+	ct := http.DetectContentType(sniff[:n])
+	// Fall back to extension only when the sniffer is unsure (octet-stream)
+	// and the declared type is allowed.
+	if ct == "application/octet-stream" {
+		if g := guessContentType(header.Filename); g != "" {
+			ct = g
+		}
 	}
 	if !mimeOK(ct, rule.mimes) {
 		httpx.Err(w, httpx.NewError(415, "bad_type", "fayl turi qabul qilinmaydi"))
@@ -75,14 +89,17 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build a prefix that scopes the object to this user (and entity, if any).
+	// The optional scope is always nested UNDER the user's own prefix so a
+	// client can't redirect uploads into another user's namespace.
 	prefix := rule.prefix + "/" + uid
 	if scope := r.URL.Query().Get("scope"); scope != "" {
-		prefix = rule.prefix + "/" + sanitize(scope)
+		prefix = prefix + "/" + sanitize(scope)
 	}
 
 	out, err := h.Storage.Upload(r.Context(), prefix, header.Filename, ct, file)
 	if err != nil {
-		httpx.Err(w, httpx.NewError(500, "upload_failed", err.Error()))
+		log.Printf("upload failed: %v", err)
+		httpx.Err(w, httpx.NewError(500, "upload_failed", "fayl yuklab bo'lmadi"))
 		return
 	}
 	httpx.JSON(w, 201, out)
@@ -110,7 +127,8 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Storage.Delete(r.Context(), key); err != nil {
-		httpx.Err(w, httpx.NewError(500, "delete_failed", err.Error()))
+		log.Printf("storage delete failed: %v", err)
+		httpx.Err(w, httpx.NewError(500, "delete_failed", "faylni o'chirib bo'lmadi"))
 		return
 	}
 	httpx.JSON(w, 200, map[string]bool{"ok": true})

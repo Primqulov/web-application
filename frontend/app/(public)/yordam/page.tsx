@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   HelpCircle, Search, ChevronDown, LogIn, ClipboardList, Handshake,
-  Star, Wallet, MessageSquare, ShieldAlert, Settings, Sparkles,
+  Star, ShieldAlert, Settings, Sparkles,
   Mail, Phone, Send, MapPin, BookOpen, ArrowRight, LifeBuoy,
 } from "lucide-react";
 import { ScriptToggle } from "@/components/ScriptToggle";
@@ -72,32 +72,6 @@ const CATEGORIES: { id: string; label: string; icon: any; questions: FAQ[] }[] =
         a: "Ha. Ish 'Bajarildi' holatiga o'tgach, har ikki tomon 1 dan 5 gacha yulduz va matnli sharh qoldirishi mumkin." },
       { q: "Yolg'on sharh qoldirildi, nima qilay?",
         a: "Profil yoki sharh yonidagi 'Shikoyat' tugmasini bosib, sababini yozib yuboring. Adminlar 24 soat ichida ko'rib chiqadi." },
-    ],
-  },
-  {
-    id: "moliya",
-    label: "Moliya",
-    icon: Wallet,
-    questions: [
-      { q: "Saytda to'lov amalga oshiriladimi?",
-        a: "Yo'q. Ishchi Bormi platforma sifatida to'lovlarni qabul qilmaydi. To'lov to'g'ridan-to'g'ri ishchi va ish beruvchi o'rtasida amalga oshiriladi." },
-      { q: "Moliya bo'limidagi raqamlar nima?",
-        a: "Bu yerda siz bajargan ishlardan kelishilgan summalar statistikasi ko'rsatiladi. Bu raqam faqat sizga tarix uchun mo'ljallangan." },
-      { q: "Bekor qilingan ishlar statistikaga kiradimi?",
-        a: "Ha — alohida 'Bekor qilingan' soni ko'rinadi. Ammo summaga qo'shilmaydi." },
-    ],
-  },
-  {
-    id: "chat",
-    label: "Xabarlar",
-    icon: MessageSquare,
-    questions: [
-      { q: "Chat qanday ishlaydi?",
-        a: "Sidebar'dagi 'Xabarlar' bo'limiga o'ting. Foydalanuvchi nomini qidirib, suhbatni boshlashingiz mumkin. Yoki ariza topshirgan/qabul qilgan kishingiz bilan to'g'ridan-to'g'ri chat ochishingiz mumkin." },
-      { q: "Xabarlar real vaqtda yetib keladimi?",
-        a: "Ha. WebSocket orqali xabarlar darhol yetkaziladi. Brauzer ochilmagan bo'lsa, sizga bildirishnoma keladi." },
-      { q: "Foydalanuvchini bloklash mumkinmi?",
-        a: "Profil sahifasidan 'Bloklash' tugmasini bosing. Bloklangan foydalanuvchidan endi xabar ola olmaysiz." },
     ],
   },
   {

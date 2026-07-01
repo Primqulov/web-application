@@ -24,6 +24,7 @@ type otpDoc struct {
 	Phone      string             `bson:"phone,omitempty"`
 	TelegramID int64              `bson:"telegramId,omitempty"`
 	Code       string             `bson:"code,omitempty"`
+	Attempts   int                `bson:"attempts"`
 	ExpiresAt  time.Time          `bson:"expiresAt"`
 	Used       bool               `bson:"used"`
 	CreatedAt  time.Time          `bson:"createdAt"`
@@ -42,7 +43,7 @@ func main() {
 	}
 	mongoURI := getenv("MONGO_URI", "mongodb://localhost:27017")
 	dbName := getenv("MONGO_DB", "ishchibormi")
-	otpTTL := time.Duration(envInt("OTP_TTL_SECONDS", 300)) * time.Second
+	otpTTL := time.Duration(envInt("OTP_TTL_SECONDS", 180)) * time.Second
 	otpLen := envInt("OTP_LENGTH", 6)
 
 	ctx := context.Background()
@@ -86,7 +87,7 @@ func main() {
 					continue
 				}
 				msg := tgbotapi.NewMessage(m.Chat.ID,
-					fmt.Sprintf("Qaytib xush kelibsiz!\n\nTasdiqlash kodingiz: *%s*\n\nKodni saytda kiriting. Kod %d daqiqa amal qiladi.",
+					fmt.Sprintf("Qaytib xush kelibsiz!\n\nTasdiqlash kodingiz: `%s`\n\n(Kodni nusxalash uchun ustiga bosing.)\nKodni saytda kiriting. Kod %d daqiqa amal qiladi.",
 						code, int(otpTTL/time.Minute)))
 				msg.ParseMode = "Markdown"
 				msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
@@ -115,7 +116,7 @@ func main() {
 				_, _ = bot.Send(tgbotapi.NewMessage(m.Chat.ID, "Xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring."))
 				continue
 			}
-			ack := tgbotapi.NewMessage(m.Chat.ID, fmt.Sprintf("Tasdiqlash kodingiz: *%s*\n\nKodni saytda kiriting. Kod %d daqiqa amal qiladi.", code, int(otpTTL/time.Minute)))
+			ack := tgbotapi.NewMessage(m.Chat.ID, fmt.Sprintf("Tasdiqlash kodingiz: `%s`\n\n(Kodni nusxalash uchun ustiga bosing.)\nKodni saytda kiriting. Kod %d daqiqa amal qiladi.", code, int(otpTTL/time.Minute)))
 			ack.ParseMode = "Markdown"
 			ack.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 			_, _ = bot.Send(ack)
