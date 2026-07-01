@@ -24,8 +24,19 @@ export default function LoginPage() {
   useEffect(() => {
     api.post<Req>("/api/auth/otp/request", {}).then((r) => {
       setTgToken(r.tgToken); setBotUrl(r.botUrl);
+    }).catch(() => {
+      setError("Serverga ulanib bo'lmadi. Birozdan so'ng qayta urinib ko'ring.");
     });
+    // Faqat bir marta ishlaydi (mount'da). `t` bilan bog'lamaymiz — u har
+    // renderda yangi funksiya, aks holda OTP so'rovi takrorlanib ketadi.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Backend botUrl'ni bermasa (username sozlanmagan bo'lsa), token va ochiq
+  // bot username'idan zaxira havola quramiz. Ikkalasi ham bo'lmasa "#".
+  const botUsername = process.env.NEXT_PUBLIC_BOT_USERNAME || "";
+  const effectiveBotUrl =
+    botUrl || (tgToken && botUsername ? `https://t.me/${botUsername}?start=${tgToken}` : "");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -96,10 +107,10 @@ export default function LoginPage() {
 
             {/* TG button */}
             <a
-              href={botUrl || "#"}
+              href={effectiveBotUrl || "#"}
               target="_blank"
               rel="noreferrer"
-              onClick={(e) => { if (!botUrl) e.preventDefault(); }}
+              onClick={(e) => { if (!effectiveBotUrl) e.preventDefault(); }}
               className="btn btn-tg btn-lg w-full mt-5 gap-2"
             >
               <Send size={16} /><T>Telegram botga o'tish</T>

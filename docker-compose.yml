@@ -70,6 +70,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      # MUHIM: NEXT_PUBLIC_* qiymatlari build vaqtida kodga yoziladi, shuning
+      # uchun ularni build args sifatida uzatamiz (aks holda localhost qoladi).
+      args:
+        NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-http://localhost:8080}
+        NEXT_PUBLIC_WS_BASE: ${NEXT_PUBLIC_WS_BASE:-ws://localhost:8080}
+        NEXT_PUBLIC_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
     container_name: ib_frontend
     restart: unless-stopped
     depends_on:
