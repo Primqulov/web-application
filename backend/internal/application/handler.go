@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -34,7 +35,12 @@ func NewHandler(db *mongo.Database, n *notification.Service) *Handler {
 }
 
 type applyReq struct {
-	Phone string `json:"phone"`
+	Phone       string `json:"phone"`
+	PeopleCount int    `json:"peopleCount"`
+}
+
+type cancelReq struct {
+	Reason string `json:"reason"`
 }
 
 func (h *Handler) Apply(w http.ResponseWriter, r *http.Request) {
@@ -57,8 +63,47 @@ func (h *Handler) Apply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if elon.Status != "recruiting" {
-		httpx.Err(w, httpx.NewError(400, "not_recruiting", "elon not accepting applications"))
+		// Ish o'rinlari to'lgan bo'lsa aniqroq xabar — sahifa eskirib qolib e'lon
+		// hali ko'rinib turgan bo'lsa ham ishchi joy to'lganini biladi.
+		if elon.Status == "filled" || (elon.WorkersNeeded > 0 && elon.AcceptedCount >= elon.WorkersNeeded) {
+			httpx.Err(w, httpx.NewError(409, "elon_full", "Afsuski, bu ishga kerakli ishchilar allaqachon to'ldi."))
+			return
+		}
+		httpx.Err(w, httpx.NewError(400, "not_recruiting", "Bu e'lon hozircha ariza qabul qilmayapti."))
 		return
+	}
+	// Nechta kishi kelmoqchi. Kamida 1, va e'longa kerakli ishchilar sonidan
+	// oshmasligi kerak (guruh bo'lib ariza berilganda mantiqiy chegara).
+	people := req.PeopleCount
+	if people < 1 {
+		people = 1
+	}
+	if elon.WorkersNeeded > 0 && people > elon.WorkersNeeded {
+		httpx.Err(w, httpx.NewError(400, "too_many_people", "kishilar soni e'londagi ishchilar sonidan ko'p bo'lishi mumkin emas"))
+		return
+	}
+	// Bir kunga bitta ish: ishchi shu sanaga allaqachon qabul qilingan (hali
+	// yakunlanmagan) ishi bo'lsa, ariza yuborilmaydi — ogohlantirish ishchiga
+	// ko'rsatiladi (ish beruvchiga emas).
+	if elon.StartDate != "" {
+		acur, aerr := h.Apps.Find(r.Context(), bson.M{"workerId": uid, "status": "accepted"})
+		if aerr == nil {
+			var otherElonIDs []primitive.ObjectID
+			for acur.Next(r.Context()) {
+				var oa models.Application
+				if acur.Decode(&oa) == nil {
+					otherElonIDs = append(otherElonIDs, oa.ElonID)
+				}
+			}
+			_ = acur.Close(r.Context())
+			if len(otherElonIDs) > 0 {
+				n, _ := h.Elons.CountDocuments(r.Context(), bson.M{"_id": bson.M{"$in": otherElonIDs}, "startDate": elon.StartDate})
+				if n > 0 {
+					httpx.Err(w, httpx.NewError(409, "worker_busy_day", "Siz shu kunga boshqa ishga qabul qilingansiz. Avvalgi ish yakunlangach ariza yuborishingiz mumkin."))
+					return
+				}
+			}
+		}
 	}
 	worker, _ := loadUser(r.Context(), h.Users, uid)
 	phone := req.Phone
@@ -71,6 +116,7 @@ func (h *Handler) Apply(w http.ResponseWriter, r *http.Request) {
 		WorkerID:     uid,
 		EmployerID:   elon.OwnerID,
 		WorkerPhone:  phone,
+		PeopleCount:  people,
 		Amount:       elon.PerWorkerAmount,
 		IsNegotiable: elon.PricingType == "negotiable",
 		Status:       "pending",
@@ -90,10 +136,52 @@ func (h *Handler) Apply(w http.ResponseWriter, r *http.Request) {
 		app.WorkerAvatarURL = worker.AvatarURL
 		app.WorkerVerified = worker.IsPhoneVerified
 	}
+	// Shu ishga oldingi arizani tekshiramiz. Unique indeks (elonId, workerId)
+	// bir ish uchun bitta yozuvga ruxsat beradi, shuning uchun bekor qilingan
+	// yoki rad etilgan arizani qayta faollashtiramiz (qayta ariza topshirish).
+	var existing models.Application
+	if err := h.Apps.FindOne(r.Context(), bson.M{"elonId": elonID, "workerId": uid}).Decode(&existing); err == nil {
+		switch existing.Status {
+		case "pending", "accepted":
+			httpx.Err(w, httpx.NewError(409, "duplicate", "siz allaqachon ariza topshirgansiz"))
+			return
+		case "completed":
+			httpx.Err(w, httpx.NewError(409, "already_done", "bu ish allaqachon yakunlangan"))
+			return
+		}
+		// cancelled | rejected → o'sha yozuvni qayta faollashtiramiz.
+		res := h.Apps.FindOneAndUpdate(r.Context(),
+			bson.M{"_id": existing.ID},
+			bson.M{
+				"$set": bson.M{
+					"status": "pending", "peopleCount": people, "workerPhone": phone,
+					"amount": app.Amount, "isNegotiable": app.IsNegotiable, "appliedAt": time.Now(),
+					"elonTitle": elon.Title, "elonCategoryName": elon.CategoryName,
+					"elonRegion": elon.Region, "elonDistrict": elon.District,
+					"ownerName": elon.OwnerName, "ownerRating": elon.OwnerRating,
+					"workerName": app.WorkerName, "workerRating": app.WorkerRating,
+					"workerReviewsCount": app.WorkerReviewsCount, "workerAvatarUrl": app.WorkerAvatarURL,
+					"workerVerified": app.WorkerVerified,
+					"employerConfirmedDone": false, "workerConfirmedDone": false,
+				},
+				"$unset": bson.M{"decidedAt": "", "cancelledBy": "", "cancelReason": "", "completedAt": ""},
+			},
+			options.FindOneAndUpdate().SetReturnDocument(options.After))
+		if res.Err() != nil {
+			httpx.Err(w, res.Err())
+			return
+		}
+		var updated models.Application
+		_ = res.Decode(&updated)
+		h.Notify.Push(r.Context(), elon.OwnerID, "new_application", "Yangi ariza", "Sizning e'loningizga ariza tushdi: "+elon.Title, &models.RelatedEntity{Type: "application", ID: updated.ID})
+		httpx.JSON(w, 201, updated)
+		return
+	}
+
 	res, err := h.Apps.InsertOne(r.Context(), app)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
-			httpx.Err(w, httpx.NewError(409, "duplicate", "you already applied"))
+			httpx.Err(w, httpx.NewError(409, "duplicate", "siz allaqachon ariza topshirgansiz"))
 			return
 		}
 		httpx.Err(w, err)
@@ -132,22 +220,120 @@ func (h *Handler) decide(w http.ResponseWriter, r *http.Request, decision string
 		return
 	}
 	now := time.Now()
+	people := app.PeopleCount
+	if people < 1 {
+		people = 1
+	}
+	// Qabul qilishda ishchilar sonini inobatga olamiz: guruh arizasidagi kishilar
+	// soni qolgan bo'sh o'rindan ko'p bo'lsa, qabul qilib bo'lmaydi (ish beruvchi
+	// mos kishilik arizani tanlaydi).
+	if decision == "accepted" {
+		var pre models.Elon
+		if err := h.Elons.FindOne(r.Context(), bson.M{"_id": app.ElonID}).Decode(&pre); err != nil {
+			httpx.Err(w, httpx.NewError(404, "not_found", "elon not found"))
+			return
+		}
+		remaining := pre.WorkersNeeded - pre.AcceptedCount
+		if remaining < 0 {
+			remaining = 0
+		}
+		if pre.WorkersNeeded > 0 && people > remaining {
+			httpx.Err(w, httpx.NewError(409, "not_enough_slots",
+				fmt.Sprintf("Bu arizada %d kishi, ammo atigi %d o'rin qoldi. Kamroq kishilik arizani tanlang.", people, remaining)))
+			return
+		}
+	}
 	set := bson.M{"status": decision, "decidedAt": now}
 	if _, err := h.Apps.UpdateOne(r.Context(), bson.M{"_id": appID}, bson.M{"$set": set}); err != nil {
 		httpx.Err(w, err)
 		return
 	}
 	if decision == "accepted" {
-		// increment elon acceptedCount, mark filled if reached
+		// increment elon acceptedCount by the number of people in this
+		// application (guruh arizasi), mark filled if reached
 		var elon models.Elon
 		_ = h.Elons.FindOneAndUpdate(r.Context(),
 			bson.M{"_id": app.ElonID},
-			bson.M{"$inc": bson.M{"acceptedCount": 1}, "$set": bson.M{"updatedAt": now}},
+			bson.M{"$inc": bson.M{"acceptedCount": people}, "$set": bson.M{"updatedAt": now}},
 			options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&elon)
+		filled := false
 		if elon.AcceptedCount >= elon.WorkersNeeded && elon.Status == "recruiting" {
 			_, _ = h.Elons.UpdateOne(r.Context(), bson.M{"_id": elon.ID}, bson.M{"$set": bson.M{"status": "filled"}})
+			filled = true
 		}
 		h.Notify.Push(r.Context(), app.WorkerID, "application_accepted", "Arizangiz qabul qilindi", elon.Title, &models.RelatedEntity{Type: "application", ID: appID})
+
+		// Joy to'lgach: shu e'londagi qolgan kutilayotgan arizalarni avtomatik
+		// rad etamiz va har biriga "joy to'ldi" xabarini yuboramiz.
+		if filled {
+			rcur, rerr := h.Apps.Find(r.Context(), bson.M{"elonId": app.ElonID, "status": "pending"})
+			if rerr == nil {
+				var rest []models.Application
+				for rcur.Next(r.Context()) {
+					var ra models.Application
+					if rcur.Decode(&ra) == nil {
+						rest = append(rest, ra)
+					}
+				}
+				_ = rcur.Close(r.Context())
+				for _, ra := range rest {
+					_, _ = h.Apps.UpdateOne(r.Context(), bson.M{"_id": ra.ID, "status": "pending"}, bson.M{"$set": bson.M{
+						"status": "rejected", "decidedAt": now,
+						"cancelReason": "Ish o'rinlari to'ldi",
+					}})
+					h.Notify.Push(r.Context(), ra.WorkerID, "application_rejected", "Joy to'ldi", ra.ElonTitle+" — ish o'rinlari to'ldi, arizangiz qabul qilinmadi", &models.RelatedEntity{Type: "application", ID: ra.ID})
+				}
+			}
+		}
+		// Bir kunga bitta ish: ishchi endi shu sanaga band. Uning shu kunga
+		// yuborilgan boshqa kutilayotgan arizalarini avtomatik bekor qilamiz —
+		// boshqa ish beruvchilar band ishchini qabul qilib qo'ymasligi uchun.
+		if elon.StartDate != "" {
+			pcur, perr := h.Apps.Find(r.Context(), bson.M{"workerId": app.WorkerID, "status": "pending", "_id": bson.M{"$ne": appID}})
+			if perr == nil {
+				var pend []models.Application
+				for pcur.Next(r.Context()) {
+					var pa models.Application
+					if pcur.Decode(&pa) == nil {
+						pend = append(pend, pa)
+					}
+				}
+				_ = pcur.Close(r.Context())
+				if len(pend) > 0 {
+					ids := make([]primitive.ObjectID, 0, len(pend))
+					for _, pa := range pend {
+						ids = append(ids, pa.ElonID)
+					}
+					sameDay := map[primitive.ObjectID]bool{}
+					ecur, eerr := h.Elons.Find(r.Context(), bson.M{"_id": bson.M{"$in": ids}, "startDate": elon.StartDate})
+					if eerr == nil {
+						for ecur.Next(r.Context()) {
+							var se models.Elon
+							if ecur.Decode(&se) == nil {
+								sameDay[se.ID] = true
+							}
+						}
+						_ = ecur.Close(r.Context())
+					}
+					cancelledAny := false
+					for _, pa := range pend {
+						if !sameDay[pa.ElonID] {
+							continue
+						}
+						_, _ = h.Apps.UpdateOne(r.Context(), bson.M{"_id": pa.ID, "status": "pending"}, bson.M{"$set": bson.M{
+							"status": "cancelled", "cancelledBy": "worker",
+							"cancelReason": "Shu kunga boshqa ishga qabul qilindi (avtomatik bekor qilindi)",
+							"decidedAt":    now,
+						}})
+						cancelledAny = true
+						h.Notify.Push(r.Context(), pa.EmployerID, "application_cancelled", "Ariza bekor qilindi", pa.ElonTitle+" — ishchi shu kunga boshqa ishga qabul qilindi", &models.RelatedEntity{Type: "application", ID: pa.ID})
+					}
+					if cancelledAny {
+						h.Notify.Push(r.Context(), app.WorkerID, "application_cancelled", "Arizalaringiz bekor qilindi", "Shu kunga boshqa kutilayotgan arizalaringiz avtomatik bekor qilindi", nil)
+					}
+				}
+			}
+		}
 	} else {
 		h.Notify.Push(r.Context(), app.WorkerID, "application_rejected", "Arizangiz rad etildi", app.ElonTitle, &models.RelatedEntity{Type: "application", ID: appID})
 	}
@@ -159,6 +345,14 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 	appID, err := primitive.ObjectIDFromHex(chi.URLParam(r, "id"))
 	if err != nil {
 		httpx.Err(w, httpx.NewError(400, "bad_id", "bad id"))
+		return
+	}
+	// Bekor qilish sababi majburiy — sababsiz bekor qilib bo'lmaydi.
+	var req cancelReq
+	_ = httpx.Decode(r, &req)
+	reason := strings.TrimSpace(req.Reason)
+	if reason == "" {
+		httpx.Err(w, httpx.NewError(400, "reason_required", "bekor qilish sababini yozing"))
 		return
 	}
 	var app models.Application
@@ -181,17 +375,21 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	wasAccepted := app.Status == "accepted"
-	_, err = h.Apps.UpdateOne(r.Context(), bson.M{"_id": appID}, bson.M{"$set": bson.M{"status": "cancelled", "cancelledBy": who, "decidedAt": time.Now()}})
+	_, err = h.Apps.UpdateOne(r.Context(), bson.M{"_id": appID}, bson.M{"$set": bson.M{"status": "cancelled", "cancelledBy": who, "cancelReason": reason, "decidedAt": time.Now()}})
 	if err != nil {
 		httpx.Err(w, err)
 		return
 	}
 	if wasAccepted {
-		// roll back acceptedCount + status if needed
+		// roll back acceptedCount (guruh arizasidagi kishilar soniga) + status if needed
+		people := app.PeopleCount
+		if people < 1 {
+			people = 1
+		}
 		var elon models.Elon
 		_ = h.Elons.FindOneAndUpdate(r.Context(),
 			bson.M{"_id": app.ElonID},
-			bson.M{"$inc": bson.M{"acceptedCount": -1}, "$set": bson.M{"updatedAt": time.Now()}},
+			bson.M{"$inc": bson.M{"acceptedCount": -people}, "$set": bson.M{"updatedAt": time.Now()}},
 			options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&elon)
 		if elon.Status == "filled" && elon.AcceptedCount < elon.WorkersNeeded {
 			_, _ = h.Elons.UpdateOne(r.Context(), bson.M{"_id": elon.ID}, bson.M{"$set": bson.M{"status": "recruiting"}})
@@ -202,7 +400,7 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 	if uid == app.EmployerID {
 		other = app.WorkerID
 	}
-	h.Notify.Push(r.Context(), other, "application_cancelled", "Ariza bekor qilindi", app.ElonTitle, &models.RelatedEntity{Type: "application", ID: appID})
+	h.Notify.Push(r.Context(), other, "application_cancelled", "Ariza bekor qilindi", app.ElonTitle+" — sabab: "+reason, &models.RelatedEntity{Type: "application", ID: appID})
 	httpx.JSON(w, 200, map[string]string{"status": "cancelled"})
 }
 

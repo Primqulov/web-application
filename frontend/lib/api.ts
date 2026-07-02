@@ -146,12 +146,17 @@ export interface Application {
   workerId: ID;
   employerId: ID;
   workerPhone: string;
+  workerName?: string;
+  workerAvatarUrl?: string;
+  ownerName?: string;
+  peopleCount?: number;
   amount: number;
   isNegotiable: boolean;
   status: "pending" | "accepted" | "rejected" | "cancelled" | "completed";
   employerConfirmedDone?: boolean;
   workerConfirmedDone?: boolean;
   cancelledBy?: string;
+  cancelReason?: string;
   appliedAt: string;
   decidedAt?: string;
   completedAt?: string;

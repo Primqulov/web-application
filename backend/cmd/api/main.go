@@ -175,6 +175,7 @@ func main() {
 
 			r.Get("/notifications", notif.List)
 			r.Post("/notifications/read-all", notif.ReadAll)
+			r.Post("/notifications/read", notif.Read)
 
 			r.Post("/reports", repH.Create)
 

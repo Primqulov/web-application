@@ -1,14 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, Elon } from "@/lib/api";
+import { Modal } from "@/components/Modal";
 
 export default function AdminElons() {
   const [elons, setElons] = useState<Elon[]>([]);
+  const [delId, setDelId] = useState("");
   async function load() { setElons(await api.get<Elon[]>("/api/admin/elons", { auth: "admin" } as any)); }
   useEffect(() => { load(); }, []);
-  async function del(id: string) {
-    if (!confirm("O'chirilsinmi?")) return;
-    await api.delete(`/api/admin/elons/${id}`, { auth: "admin" } as any);
+  async function del() {
+    await api.delete(`/api/admin/elons/${delId}`, { auth: "admin" } as any);
+    setDelId("");
     load();
   }
   return (
@@ -21,12 +23,22 @@ export default function AdminElons() {
               <tr key={e.id} className="border-t" style={{ borderColor: "var(--border)" }}>
                 <td className="py-2">{e.title}</td><td>{e.categoryName}</td><td>{e.status}</td><td>{e.workersNeeded}</td>
                 <td className="whitespace-nowrap">{e.priceAmount.toLocaleString("uz-UZ")}</td>
-                <td className="text-right"><button onClick={() => del(e.id)} className="btn-danger btn-sm">O'chirish</button></td>
+                <td className="text-right"><button onClick={() => setDelId(e.id)} className="btn-danger btn-sm">O'chirish</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* O'chirishni tasdiqlash — modal ko'rinishida */}
+      <Modal open={!!delId} onClose={() => setDelId("")} title="E'lonni o'chirasizmi?" footer={
+        <>
+          <button onClick={() => setDelId("")} className="btn-secondary">Yo'q</button>
+          <button onClick={del} className="btn-danger">Ha, o'chirish</button>
+        </>
+      }>
+        <p className="text-sm muted">E'lon o'chiriladi. Davom etasizmi?</p>
+      </Modal>
     </div>
   );
 }

@@ -4,14 +4,20 @@ import { useQuery } from "@tanstack/react-query";
 import { api, Application } from "@/lib/api";
 import { Shell } from "@/components/Shell";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Modal } from "@/components/Modal";
 import { Search, Filter, Calendar } from "lucide-react";
 import { T, useT } from "@/components/T";
 import { fmtDate, fmtSumSom } from "@/lib/format";
 import dayjs from "dayjs";
 
+function shortReason(s: string, max = 50) {
+  return s.length > max ? s.slice(0, max).trimEnd() + "…" : s;
+}
+
 export default function History() {
   const t = useT();
   const [q, setQ] = useState("");
+  const [reasonView, setReasonView] = useState<Application | null>(null);
   const [status, setStatus] = useState<string>("");
   const [range, setRange] = useState<string>("");
   const [from, setFrom] = useState("");
@@ -110,6 +116,18 @@ export default function History() {
               <div>
                 <div className={`font-medium ${a.status !== "completed" ? "line-through" : ""}`}><T>{a.elonTitle}</T></div>
                 <div className="text-xs text-[color:var(--text-muted)]">{fmtDate(a.completedAt || a.decidedAt || a.appliedAt)}</div>
+                {a.status === "cancelled" && (
+                  <div className="text-xs text-danger mt-0.5">
+                    <T>{a.cancelledBy === "worker" ? "Ishchi tomonidan bekor qilingan" : "Ish beruvchi tomonidan bekor qilingan"}</T>
+                    {a.cancelReason && <> — <span className="text-[color:var(--text-muted)]"><T>{shortReason(a.cancelReason)}</T></span></>}
+                    {a.cancelReason && a.cancelReason.length > 50 && (
+                      <button onClick={() => setReasonView(a)} className="ml-1 text-tg-blue underline"><T>Batafsil</T></button>
+                    )}
+                  </div>
+                )}
+                {a.status === "rejected" && (
+                  <div className="text-xs text-[color:var(--text-muted)] mt-0.5"><T>Ish beruvchi tomonidan qabul qilinmagan</T></div>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <span className={a.status !== "completed" ? "line-through text-[color:var(--text-muted)]" : "font-semibold text-accent-amber"}>
@@ -121,6 +139,19 @@ export default function History() {
           ))}
         </div>
       ))}
+
+      {/* Bekor qilish sababini batafsil o'qish */}
+      <Modal open={!!reasonView} onClose={() => setReasonView(null)} title={t("Bekor qilish sababi")}>
+        {reasonView && (
+          <div className="grid gap-2">
+            <p className="text-sm font-semibold"><T>{reasonView.elonTitle}</T></p>
+            <p className="text-xs text-[color:var(--text-muted)]">
+              <T>{reasonView.cancelledBy === "worker" ? "Ishchi tomonidan bekor qilingan" : "Ish beruvchi tomonidan bekor qilingan"}</T>
+            </p>
+            <p className="text-sm whitespace-pre-line"><T>{reasonView.cancelReason || ""}</T></p>
+          </div>
+        )}
+      </Modal>
     </Shell>
   );
 }

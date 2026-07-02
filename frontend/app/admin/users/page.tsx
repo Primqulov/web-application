@@ -1,18 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, User } from "@/lib/api";
+import { Modal } from "@/components/Modal";
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
+  const [delId, setDelId] = useState("");
   async function load() { setUsers(await api.get<User[]>("/api/admin/users", { auth: "admin" } as any)); }
   useEffect(() => { load(); }, []);
   async function block(id: string, isBlocked: boolean) {
     await api.post(`/api/admin/users/${id}/block`, { isBlocked }, { auth: "admin" } as any);
     load();
   }
-  async function del(id: string) {
-    if (!confirm("O'chirilsinmi?")) return;
-    await api.delete(`/api/admin/users/${id}`, { auth: "admin" } as any);
+  async function del() {
+    await api.delete(`/api/admin/users/${delId}`, { auth: "admin" } as any);
+    setDelId("");
     load();
   }
   return (
@@ -29,7 +31,7 @@ export default function AdminUsers() {
                 <td>
                   <div className="flex flex-wrap gap-2 justify-end">
                     <button onClick={() => block(u.id, !u.isBlocked)} className="btn-secondary btn-sm">{u.isBlocked ? "Ochish" : "Bloklash"}</button>
-                    <button onClick={() => del(u.id)} className="btn-danger btn-sm">O'chirish</button>
+                    <button onClick={() => setDelId(u.id)} className="btn-danger btn-sm">O'chirish</button>
                   </div>
                 </td>
               </tr>
@@ -37,6 +39,16 @@ export default function AdminUsers() {
           </tbody>
         </table>
       </div>
+
+      {/* O'chirishni tasdiqlash — modal ko'rinishida */}
+      <Modal open={!!delId} onClose={() => setDelId("")} title="Foydalanuvchini o'chirasizmi?" footer={
+        <>
+          <button onClick={() => setDelId("")} className="btn-secondary">Yo'q</button>
+          <button onClick={del} className="btn-danger">Ha, o'chirish</button>
+        </>
+      }>
+        <p className="text-sm muted">Foydalanuvchi o'chiriladi. Davom etasizmi?</p>
+      </Modal>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { api, User } from "@/lib/api";
 import { CheckCircle2 } from "lucide-react";
 import { Shell } from "@/components/Shell";
@@ -11,6 +12,7 @@ const REGIONS = ["Toshkent", "Samarqand", "Buxoro", "Farg'ona", "Namangan", "And
 
 export default function Onboarding() {
   const router = useRouter();
+  const qc = useQueryClient();
   const t = useT();
   const [me, setMe] = useState<User | null>(null);
   const [firstName, setFirstName] = useState("");
@@ -35,7 +37,11 @@ export default function Onboarding() {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.patch("/api/me", { firstName, lastName, region, district, avatarUrl: avatarUrl || "" });
+      // Yangilangan foydalanuvchini React Query keshiga yozamiz, aks holda
+      // /dashboard'dagi Shell eski (onboardingCompleted=false) keshni o'qib,
+      // foydalanuvchini yana /onboarding'ga qaytaradi (ikki marta saqlash muammosi).
+      const updated = await api.patch<User>("/api/me", { firstName, lastName, region, district, avatarUrl: avatarUrl || "" });
+      qc.setQueryData(["me"], updated);
       router.replace("/dashboard");
     } finally {
       setSaving(false);

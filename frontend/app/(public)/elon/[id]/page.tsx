@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Info, Users, Calendar, MapPin, FileText, Wallet, ShieldCheck,
-  Phone, Send, Share2, UserRound, Image as ImageIcon,
+  Phone, Send, Share2, UserRound, Image as ImageIcon, X,
 } from "lucide-react";
 import { api, Elon, getAccess } from "@/lib/api";
 import { Modal } from "@/components/Modal";
@@ -27,7 +27,12 @@ export default function ElonDetails() {
   const [open, setOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [phone, setPhone] = useState("");
+  const [people, setPeople] = useState(1);
+  const [cancelReason, setCancelReason] = useState("");
+  const [errMsg, setErrMsg] = useState("");
   const [status, setStatus] = useState<"none" | "pending" | "accepted">("none");
+  const [appId, setAppId] = useState("");
+  const [cancelOpen, setCancelOpen] = useState(false);
   const [me, setMe] = useState<any>(null);
   const [authed, setAuthed] = useState(false);
 
@@ -38,7 +43,10 @@ export default function ElonDetails() {
       api.get<any>("/api/me").then((u) => { setMe(u); setPhone(u.phone ? fmtPhone(u.phone) : ""); }).catch(() => {});
       api.get<any[]>("/api/my/applications").then((apps) => {
         const mine = apps.find((a) => a.elonId === id);
-        if (mine) setStatus(mine.status === "accepted" ? "accepted" : mine.status === "pending" ? "pending" : "none");
+        if (mine) {
+          setAppId(mine.id);
+          setStatus(mine.status === "accepted" ? "accepted" : mine.status === "pending" ? "pending" : "none");
+        }
       }).catch(() => {});
     }
   }, [id]);
@@ -50,8 +58,17 @@ export default function ElonDetails() {
   });
 
   const apply = useMutation({
-    mutationFn: () => api.post(`/api/elons/${id}/apply`, { phone }),
-    onSuccess: () => { setOpen(false); setStatus("pending"); },
+    mutationFn: () => api.post<{ id: string }>(`/api/elons/${id}/apply`, { phone, peopleCount: people }),
+    onSuccess: (res) => { setOpen(false); setStatus("pending"); if (res?.id) setAppId(res.id); },
+    // Masalan "shu kunga boshqa ishga qabul qilingansiz" — ogohlantirish
+    // ishchiga modal oynada ko'rsatiladi.
+    onError: (e: any) => { setOpen(false); setErrMsg(e?.message || "Xatolik yuz berdi"); },
+  });
+
+  const cancel = useMutation({
+    mutationFn: () => api.post(`/api/applications/${appId}/cancel`, { reason: cancelReason.trim() }),
+    onSuccess: () => { setCancelOpen(false); setCancelReason(""); setStatus("none"); setAppId(""); },
+    onError: (e: any) => { setCancelOpen(false); setErrMsg(e?.message || "Xatolik yuz berdi"); },
   });
 
   if (!e) {
@@ -195,7 +212,12 @@ export default function ElonDetails() {
               </button>
             )}
             {status === "pending" && (
-              <button disabled className="w-full rounded-lg py-3 bg-pending-bg text-pending font-medium"><T>Kutilmoqda</T></button>
+              <div className="grid gap-2">
+                <div className="w-full rounded-lg py-3 bg-pending-bg text-pending font-medium text-center"><T>Kutilmoqda</T></div>
+                <button onClick={() => setCancelOpen(true)} disabled={!appId} className="btn-danger w-full py-3 gap-2 disabled:opacity-50">
+                  <X size={16} /><T>Arizani bekor qilish</T>
+                </button>
+              </div>
             )}
             {status === "accepted" && (
               <button disabled className="w-full rounded-lg py-3 bg-success-bg text-success font-medium"><T>Ish qabul qilindi</T></button>
@@ -219,10 +241,47 @@ export default function ElonDetails() {
         </>
       }>
         <p className="text-sm muted mb-3"><T>{e.title}</T> — {fmtSumSom(e.perWorkerAmount, e.pricingType === "negotiable")} / <T>kishi boshiga</T></p>
+        {(() => {
+          const remaining = Math.max(1, (e.workersNeeded || 1) - (e.acceptedCount || 0));
+          return (
+            <label className="block mb-3">
+              <span className="text-sm font-medium"><T>NECHA KISHI BORASIZ?</T></span>
+              <div className="mt-1 flex items-center gap-3">
+                <button type="button" onClick={() => setPeople((n) => Math.max(1, n - 1))} disabled={people <= 1}
+                  className="h-10 w-10 rounded-lg border text-lg font-semibold disabled:opacity-40" style={{ borderColor: "var(--border)" }}>−</button>
+                <span className="min-w-[2.5rem] text-center text-lg font-bold">{people}</span>
+                <button type="button" onClick={() => setPeople((n) => Math.min(remaining, n + 1))} disabled={people >= remaining}
+                  className="h-10 w-10 rounded-lg border text-lg font-semibold disabled:opacity-40" style={{ borderColor: "var(--border)" }}>+</button>
+                <span className="text-xs muted ml-1"><T>Bo'sh o'rin</T>: {remaining}</span>
+              </div>
+            </label>
+          );
+        })()}
         <label className="block">
           <span className="text-sm font-medium"><T>TELEFON RAQAMINGIZ</T></span>
           <input className="input mt-1" inputMode="numeric" value={phone} onChange={(ev) => setPhone(fmtPhone(ev.target.value))} placeholder="+998 90 020 25 35" />
         </label>
+      </Modal>
+
+      <Modal open={cancelOpen} onClose={() => setCancelOpen(false)} title={t("Arizani bekor qilasizmi?")} footer={
+        <>
+          <button onClick={() => setCancelOpen(false)} className="btn-secondary"><T>Yo'q</T></button>
+          <button onClick={() => cancel.mutate()} disabled={cancel.isPending || !cancelReason.trim()} className="btn-danger disabled:opacity-50"><T>Ha, bekor qilish</T></button>
+        </>
+      }>
+        <p className="text-sm muted mb-3"><T>{e.title}</T> — <T>ushbu ishga yuborgan arizangiz bekor qilinadi. Keyinroq qayta ariza topshirishingiz mumkin.</T></p>
+        <label className="block">
+          <span className="text-sm font-medium"><T>BEKOR QILISH SABABI</T> <span className="text-danger">*</span></span>
+          <textarea className="input mt-1" rows={3} value={cancelReason} onChange={(ev) => setCancelReason(ev.target.value)} placeholder={t("Masalan: rejalarim o'zgardi")} />
+          {!cancelReason.trim() && <span className="text-xs text-danger mt-1 block"><T>Sababni yozmasangiz bekor qila olmaysiz.</T></span>}
+        </label>
+      </Modal>
+
+      {/* Xato/ogohlantirish — modal ko'rinishida */}
+      <Modal open={!!errMsg} onClose={() => setErrMsg("")} title={t("Ogohlantirish")} footer={
+        <button onClick={() => setErrMsg("")} className="btn-primary"><T>Tushunarli</T></button>
+      }>
+        <p className="text-sm"><T>{errMsg}</T></p>
       </Modal>
     </div>
   );

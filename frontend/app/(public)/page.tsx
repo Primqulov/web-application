@@ -20,6 +20,11 @@ export default function Landing() {
   const router = useRouter();
   const [examples, setExamples] = useState<Elon[]>([]);
   const [checking, setChecking] = useState(true);
+  // getAccess() localStorage'ni o'qiydi — server (token yo'q) va client (token
+  // bor) renderlarini farqlantiradi. Birinchi render server bilan mos bo'lishi
+  // uchun auth'ga bog'liq shohobchalarni faqat mount'dan keyin ko'rsatamiz.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   // Tizimga kirgan foydalanuvchiga landing ko'rsatilmaydi — to'g'ridan-to'g'ri
   // kabinetga (yoki ro'yxatdan o'tish tugamagan bo'lsa onboardingga) yo'naltiramiz.
@@ -34,9 +39,9 @@ export default function Landing() {
     api.get<{ items: Elon[] }>("/api/elons?limit=3", { auth: "none" } as any)
       .then((r) => setExamples(r.items || [])).catch(() => {});
   }, []);
-  const ctaHref = getAccess() ? "/dashboard" : "/login";
+  const ctaHref = mounted && getAccess() ? "/dashboard" : "/login";
 
-  if (checking && getAccess()) {
+  if (mounted && checking && getAccess()) {
     return <div className="min-h-screen grid place-items-center muted text-sm"><T>Yuklanmoqda…</T></div>;
   }
 

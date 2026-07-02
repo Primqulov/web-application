@@ -55,7 +55,13 @@ export const useScript = create<ScriptState>()(
       setScript: (s) => set({ script: s }),
       toggle: () => set({ script: get().script === "latin" ? "cyrillic" : "latin" }),
     }),
-    { name: "ib-script" }
+    {
+      name: "ib-script",
+      // SSR bilan mos kelishi uchun localStorage'dan avtomatik o'qimaymiz —
+      // birinchi render doim "latin" (server bilan bir xil), so'ng Providers
+      // mount bo'lgach qo'lda rehydrate qilinadi. Aks holda hydration mismatch.
+      skipHydration: true,
+    }
   )
 );
 

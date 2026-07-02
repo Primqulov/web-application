@@ -10,6 +10,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Modal } from "@/components/Modal";
 import { T, useT } from "@/components/T";
 import { fmtSumSom, fromNow } from "@/lib/format";
 
@@ -20,6 +21,7 @@ export default function MyElons() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<"active" | "archived">("active");
   const [q, setQ] = useState("");
+  const [delId, setDelId] = useState("");
 
   const { data, isLoading } = useQuery<MyElons>({
     queryKey: ["my-elons"],
@@ -28,7 +30,7 @@ export default function MyElons() {
 
   const del = useMutation({
     mutationFn: (id: string) => api.delete(`/api/elons/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["my-elons"] }),
+    onSuccess: () => { setDelId(""); qc.invalidateQueries({ queryKey: ["my-elons"] }); },
   });
 
   const counts = { active: data?.active.length ?? 0, archived: data?.archived.length ?? 0 };
@@ -84,7 +86,7 @@ export default function MyElons() {
                     <Pencil size={14} className="muted" />
                   </Link>
                   <button
-                    onClick={() => { if (confirm(t("E'lon butunlay o'chiriladi va qayta tiklab bo'lmaydi. Davom etasizmi?"))) del.mutate(e.id); }}
+                    onClick={() => setDelId(e.id)}
                     className="p-1.5 rounded-md hover:bg-danger-bg text-danger" aria-label="Delete"
                   >
                     <Trash2 size={14} />
@@ -110,6 +112,16 @@ export default function MyElons() {
           ))}
         </div>
       )}
+
+      {/* O'chirishni tasdiqlash — modal ko'rinishida */}
+      <Modal open={!!delId} onClose={() => setDelId("")} title={t("E'lonni o'chirasizmi?")} footer={
+        <>
+          <button onClick={() => setDelId("")} className="btn-secondary"><T>Yo'q</T></button>
+          <button onClick={() => del.mutate(delId)} disabled={del.isPending} className="btn-danger"><T>Ha, o'chirish</T></button>
+        </>
+      }>
+        <p className="text-sm muted"><T>E'lon butunlay o'chiriladi va qayta tiklab bo'lmaydi. Davom etasizmi?</T></p>
+      </Modal>
     </Shell>
   );
 }

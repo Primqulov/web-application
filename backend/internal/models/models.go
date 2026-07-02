@@ -128,6 +128,10 @@ type Application struct {
 	WorkerID               primitive.ObjectID `bson:"workerId" json:"workerId"`
 	EmployerID             primitive.ObjectID `bson:"employerId" json:"employerId"`
 	WorkerPhone            string             `bson:"workerPhone" json:"workerPhone"`
+	// Ushbu ariza bilan nechta kishi ishga kelmoqchi (guruh bo'lib ariza).
+	// Kamida 1. Ish beruvchi qabul qilganda e'lonning acceptedCount shu songa
+	// oshadi.
+	PeopleCount            int                `bson:"peopleCount" json:"peopleCount"`
 	// Denormalized worker snapshot (ariza tushgan paytdagi holat) — ish beruvchi
 	// nomzodlar ro'yxatini ko'rsatishi uchun.
 	WorkerName         string  `bson:"workerName,omitempty" json:"workerName"`
@@ -147,6 +151,7 @@ type Application struct {
 	EmployerConfirmedDone  bool               `bson:"employerConfirmedDone" json:"employerConfirmedDone"`
 	WorkerConfirmedDone    bool               `bson:"workerConfirmedDone" json:"workerConfirmedDone"`
 	CancelledBy            string             `bson:"cancelledBy,omitempty" json:"cancelledBy"`
+	CancelReason           string             `bson:"cancelReason,omitempty" json:"cancelReason,omitempty"`
 	AppliedAt              time.Time          `bson:"appliedAt" json:"appliedAt"`
 	DecidedAt              *time.Time         `bson:"decidedAt,omitempty" json:"decidedAt,omitempty"`
 	CompletedAt            *time.Time         `bson:"completedAt,omitempty" json:"completedAt,omitempty"`

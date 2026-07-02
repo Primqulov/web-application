@@ -289,7 +289,8 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, 200, map[string]bool{"ok": true})
 }
 
-// Feed: public listing for recruiting + filled (paged).
+// Feed: public listing for recruiting only (paged). Ish o'rinlari to'lgan
+// (filled) e'lonlar ro'yxatda ko'rinmaydi.
 func (h *Handler) Feed(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	cat := strings.TrimSpace(r.URL.Query().Get("categoryId"))
@@ -302,7 +303,7 @@ func (h *Handler) Feed(w http.ResponseWriter, r *http.Request) {
 	if page < 1 {
 		page = 1
 	}
-	filter := bson.M{"isDeleted": bson.M{"$ne": true}, "status": bson.M{"$in": []string{"recruiting", "filled"}}}
+	filter := bson.M{"isDeleted": bson.M{"$ne": true}, "status": "recruiting"}
 	// Vaqti o'tgan e'lonlarni feeddan yashiramiz: belgilangan boshlanish
 	// vaqtidan (kun + soat) feedExpiryGrace dan ko'p o'tgan bo'lsa — ro'yxatda
 	// ko'rinmaydi (kechagi/eski e'lonlar va bugun bo'lib o'tganlari ham).

@@ -63,6 +63,12 @@ html, body {
 
 ::selection { background: var(--accent-soft); color: var(--heading); }
 
+/* Ish o'rinlari to'lish progress-bari uchun chapdan o'ngga yugurib turuvchi yorug'lik. */
+@keyframes slot-shimmer {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(320%); }
+}
+
 * { border-color: var(--border); }
 :focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); border-radius: 0.5rem; }
 

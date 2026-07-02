@@ -70,3 +70,40 @@ func (s *Service) ReadAll(w http.ResponseWriter, r *http.Request) {
 	_, _ = s.Col.UpdateMany(r.Context(), bson.M{"userId": uid, "isRead": false}, bson.M{"$set": bson.M{"isRead": true}})
 	httpx.JSON(w, 200, map[string]bool{"ok": true})
 }
+
+type readReq struct {
+	RelatedIDs  []string `json:"relatedIds"`
+	RelatedType string   `json:"relatedType"`
+}
+
+// Read marks a targeted subset of the user's unread notifications read — either
+// those tied to specific related entities (relatedIds) or a whole related type
+// (relatedType, e.g. "application"). Used to clear the "red dot" indicators as
+// the user views the corresponding items.
+func (s *Service) Read(w http.ResponseWriter, r *http.Request) {
+	uid, _ := primitive.ObjectIDFromHex(httpx.UserID(r))
+	var req readReq
+	_ = httpx.Decode(r, &req)
+	filter := bson.M{"userId": uid, "isRead": false}
+	switch {
+	case len(req.RelatedIDs) > 0:
+		oids := make([]primitive.ObjectID, 0, len(req.RelatedIDs))
+		for _, h := range req.RelatedIDs {
+			if oid, err := primitive.ObjectIDFromHex(h); err == nil {
+				oids = append(oids, oid)
+			}
+		}
+		if len(oids) == 0 {
+			httpx.JSON(w, 200, map[string]bool{"ok": true})
+			return
+		}
+		filter["relatedEntity.id"] = bson.M{"$in": oids}
+	case req.RelatedType != "":
+		filter["relatedEntity.type"] = req.RelatedType
+	default:
+		httpx.Err(w, httpx.NewError(400, "bad_request", "relatedIds yoki relatedType kerak"))
+		return
+	}
+	_, _ = s.Col.UpdateMany(r.Context(), filter, bson.M{"$set": bson.M{"isRead": true}})
+	httpx.JSON(w, 200, map[string]bool{"ok": true})
+}

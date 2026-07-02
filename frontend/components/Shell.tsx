@@ -40,6 +40,9 @@ export function Shell({ title, search, children }: { title: string; search?: Rea
     refetchInterval: 30000,
   });
   const unread = (notifs || []).filter((n) => !n.isRead).length;
+  // "Jarayonlar" bo'limi uchun qizil nuqta: ariza bilan bog'liq (yangi ariza,
+  // qabul/rad/bekor, yakunlash) o'qilmagan bildirishnoma bormi.
+  const processDot = (notifs || []).some((n) => !n.isRead && n.relatedEntity?.type === "application");
 
   // onboarding redirect
   useEffect(() => {
@@ -77,6 +80,9 @@ export function Shell({ title, search, children }: { title: string; search?: Rea
               <span className="flex-1"><T>{label}</T></span>
               {href === "/notifications" && unread > 0 && (
                 <span className="badge-amber">{unread}</span>
+              )}
+              {href === "/process" && processDot && (
+                <span className="h-2.5 w-2.5 rounded-full bg-danger ring-2 ring-[color:var(--card)]" aria-label={t("yangi faoliyat")} />
               )}
             </Link>
           );
