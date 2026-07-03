@@ -1,17 +1,13 @@
 import type { Metadata } from "next";
-import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/seo";
+import { SITE_URL, SITE_NAME, SITE_TITLE, SITE_DESCRIPTION } from "@/lib/seo";
 import LandingClient from "./landing-client";
 
+// Bosh sahifa — canonical va title'ni belgilaydi. Open Graph / Twitter (rasm bilan)
+// root layout'dan meros qilib olinadi, shuning uchun bu yerda qayta e'lon qilinmaydi.
 export const metadata: Metadata = {
-  title: { absolute: `${SITE_NAME} — kunlik ish va ishchi bozori | ishchi toping yoki ish boshlang` },
+  title: { absolute: SITE_TITLE },
   description: SITE_DESCRIPTION,
   alternates: { canonical: "/" },
-  openGraph: {
-    title: `${SITE_NAME} — kunlik ish va ishchi bozori`,
-    description: SITE_DESCRIPTION,
-    url: SITE_URL,
-    type: "website",
-  },
 };
 
 // Bosh sahifa uchun tuzilmali ma'lumot (JSON-LD): tashkilot + veb-sayt qidiruvi.

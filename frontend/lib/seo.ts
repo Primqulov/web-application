@@ -2,15 +2,30 @@
 // Sayt manzili — barcha sitemap/robots/canonical/OG havolalari shundan quriladi.
 export const SITE_URL = "https://ishchibormi.uz";
 export const SITE_NAME = "Ishchi Bormi";
+
+// Bosh sahifa sarlavhasi — qidiruvda darhol tushunarli bo'lsin.
+export const SITE_TITLE = "Ishchi Bormi — Kunlik yumushlar uchun ishchi toping yoki ish toping";
+
+// Meta description — oddiy foydalanuvchi tilida, saytning vazifasi darhol bilinsin.
 export const SITE_DESCRIPTION =
-  "Ishchi Bormi — O'zbekiston uchun kunlik ish va mardikor bozori. Tasdiqlangan profillar, " +
-  "ochiq baholar orqali ishchi toping yoki o'zingizga ish oling — bir necha daqiqada.";
+  "Uy ko‘chirish, yuk tashish, hovli tozalash, ta'mirlash va boshqa kunlik yumushlar uchun " +
+  "ishonchli ishchi toping. Kunlik ish izlayotgan bo‘lsangiz, yaqiningizdagi ish e'lonlarini " +
+  "topib, ish beruvchi bilan bevosita bog‘laning.";
+
+// Open Graph / ijtimoiy tarmoqlar uchun qisqaroq va jozibador tavsif.
+export const SITE_OG_DESCRIPTION =
+  "Uy ko‘chirish, yuk tashish, hovli tozalash, ta'mirlash va boshqa kunlik yumushlar uchun " +
+  "ishonchli ishchi toping yoki ish toping.";
 
 export const SITE_KEYWORDS = [
-  "ishchi bormi", "mardikor", "kunlik ish", "ish topish", "ishchi topish",
-  "ish o'rni", "vaqtinchalik ish", "tozalash", "yuk tashish", "ustachilik",
-  "santexnik", "ish e'lonlari", "O'zbekiston ish", "ishchi kuchi",
+  "ishchi bormi", "kunlik yumush", "kunlik ish", "mardikor", "ishchi topish",
+  "uy ko‘chirish", "yuk tashish", "hovli tozalash", "ta'mirlash",
+  "santexnik", "elektrik", "usta", "O‘zbekiston",
 ];
+
+// Eslatma: OG/Twitter rasmi va favicon/apple/PWA ikonkalari Next.js file-convention
+// orqali beriladi — app/opengraph-image.png, app/twitter-image.png, app/icon.png,
+// app/apple-icon.png va public/icons/* (manifest.ts). URL'lar avtomatik hosil bo'ladi.
 
 // API bazaviy manzili (server tomonda ham ishlaydi — absolyut bo'lishi shart).
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080").replace(/\/$/, "");

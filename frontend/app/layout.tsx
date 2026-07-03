@@ -1,12 +1,19 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Providers } from "@/components/Providers";
-import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, SITE_KEYWORDS } from "@/lib/seo";
+import {
+  SITE_URL,
+  SITE_NAME,
+  SITE_TITLE,
+  SITE_DESCRIPTION,
+  SITE_OG_DESCRIPTION,
+  SITE_KEYWORDS,
+} from "@/lib/seo";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} — kunlik ish va ishchi bozori`,
+    default: SITE_TITLE,
     template: `%s — ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
@@ -16,6 +23,8 @@ export const metadata: Metadata = {
   creator: SITE_NAME,
   publisher: SITE_NAME,
   alternates: { canonical: "/" },
+  // Favicon / apple-touch-icon — app/icon.png va app/apple-icon.png fayllari orqali
+  // (Next.js file-convention) avtomatik ulanadi.
   robots: {
     index: true,
     follow: true,
@@ -32,13 +41,15 @@ export const metadata: Metadata = {
     locale: "uz_UZ",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: `${SITE_NAME} — kunlik ish va ishchi bozori`,
-    description: SITE_DESCRIPTION,
+    title: SITE_TITLE,
+    description: SITE_OG_DESCRIPTION,
+    // OG rasmi app/opengraph-image.png fayli orqali avtomatik ulanadi.
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} — kunlik ish va ishchi bozori`,
-    description: SITE_DESCRIPTION,
+    title: SITE_TITLE,
+    description: SITE_OG_DESCRIPTION,
+    // Twitter rasmi app/twitter-image.png fayli orqali avtomatik ulanadi.
   },
   category: "business",
   formatDetection: { telephone: true },
