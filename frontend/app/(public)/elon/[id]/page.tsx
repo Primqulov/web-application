@@ -1,101 +1,37 @@
 import type { Metadata } from "next";
-import { SITE_URL, SITE_NAME, fetchElon, absUrl } from "@/lib/seo";
+import { notFound } from "next/navigation";
+import {
+  getElon,
+  buildElonMetadata,
+  buildJobPostingLd,
+  notFoundMetadata,
+} from "@/lib/elon-seo";
 import ElonClient from "./elon-client";
 
 type Params = { params: { id: string } };
 
-function priceText(e: any): string {
-  if (!e) return "";
-  if (e.pricingType === "negotiable") return "Kelishilgan holda";
-  const n = Number(e.perWorkerAmount || e.priceAmount || 0);
-  return n > 0 ? `${n.toLocaleString("ru-RU")} so'm` : "";
-}
-
-// Har bir e'lon uchun alohida title/description (Google natijalarida ko'rinadi).
+// Har bir e'lon uchun dinamik SEO metadata (title/description/OG/Twitter/canonical/keywords).
+// Butun logika lib/elon-seo.ts'da — bu yerda faqat yuklab, tayyor helper'ga uzatamiz.
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
-  const e = await fetchElon(params.id);
-  if (!e) {
-    return { title: "E'lon", description: "Ishchi Bormi — kunlik ish va mardikor bozori." };
-  }
-  const loc = [e.region, e.district].filter(Boolean).join(", ");
-  const price = priceText(e);
-  const title = `${e.title}${loc ? ` — ${loc}` : ""}`;
-  const desc =
-    (e.description ? String(e.description).slice(0, 150) : `${e.categoryName || "Ish"} bo'yicha e'lon`) +
-    (price ? ` · ${price}` : "") + (loc ? ` · ${loc}` : "");
-  const path = `/elon/${params.id}`;
-  const images: string[] = Array.isArray(e.images) ? e.images.filter(Boolean) : [];
-  return {
-    title,
-    description: desc,
-    alternates: { canonical: path },
-    openGraph: {
-      type: "article",
-      title,
-      description: desc,
-      url: absUrl(path),
-      siteName: SITE_NAME,
-      ...(images.length ? { images: images.slice(0, 4) } : {}),
-    },
-    twitter: {
-      card: images.length ? "summary_large_image" : "summary",
-      title,
-      description: desc,
-      ...(images.length ? { images: [images[0]] } : {}),
-    },
-  };
-}
-
-// JobPosting tuzilmali ma'lumoti — Google'da "ish" boyitilgan natijasi uchun.
-function jobPostingLd(e: any, id: string) {
-  if (!e) return null;
-  const loc = [e.district, e.region].filter(Boolean).join(", ");
-  const amount = Number(e.perWorkerAmount || e.priceAmount || 0);
-  return {
-    "@context": "https://schema.org",
-    "@type": "JobPosting",
-    title: e.title,
-    description: e.description || e.title,
-    datePosted: e.publishedAt || e.createdAt || undefined,
-    employmentType: "PER_DIEM",
-    hiringOrganization: {
-      "@type": "Organization",
-      name: e.ownerName || SITE_NAME,
-    },
-    jobLocation: {
-      "@type": "Place",
-      address: {
-        "@type": "PostalAddress",
-        addressRegion: e.region || undefined,
-        addressLocality: e.district || undefined,
-        addressCountry: "UZ",
-      },
-    },
-    ...(amount > 0
-      ? {
-          baseSalary: {
-            "@type": "MonetaryAmount",
-            currency: "UZS",
-            value: { "@type": "QuantitativeValue", value: amount, unitText: "DAY" },
-          },
-        }
-      : {}),
-    url: absUrl(`/elon/${id}`),
-    identifier: { "@type": "PropertyValue", name: SITE_NAME, value: id },
-  };
+  const e = await getElon(params.id);
+  if (!e) return notFoundMetadata();
+  return buildElonMetadata(e, params.id);
 }
 
 export default async function Page({ params }: Params) {
-  const e = await fetchElon(params.id);
-  const ld = jobPostingLd(e, params.id);
+  const e = await getElon(params.id);
+  // E'lon topilmasa (yoki o'chirilgan bo'lsa) — haqiqiy 404, indekslanmaydi.
+  if (!e) notFound();
+
+  const jobPostingLd = buildJobPostingLd(e, params.id);
+  // "<" ni escape qilamiz — tavsif matnida "</script>" bo'lsa ham xavfsiz bo'lsin.
+  const ldJson = JSON.stringify(jobPostingLd).replace(/</g, "\\u003c");
   return (
     <>
-      {ld && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }}
-        />
-      )}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: ldJson }}
+      />
       <ElonClient />
     </>
   );
