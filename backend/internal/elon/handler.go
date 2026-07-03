@@ -344,6 +344,73 @@ func (h *Handler) Feed(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, 200, map[string]any{"items": out, "page": page, "limit": limit, "total": total})
 }
 
+// sitemapMaxLimit — XML sitemap uchun bitta so'rovda qaytariladigan maksimal
+// e'lonlar soni. Google bitta sitemap fayliga 50 000 URL limiti bilan mos.
+const sitemapMaxLimit = 50000
+
+// sitemapItem — sitemap uchun eng yengil proyeksiya (faqat URL + lastModified
+// uchun kerakli maydonlar). To'liq e'lon yuklanmaydi.
+type sitemapItem struct {
+	ID          primitive.ObjectID `json:"id"`
+	UpdatedAt   time.Time          `json:"updatedAt"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	PublishedAt *time.Time         `json:"publishedAt,omitempty"`
+}
+
+// Sitemap: XML sitemap uchun FAOL e'lonlar ro'yxati (id + vaqtlar).
+//
+// Feed bilan bir xil "faol" filtridan foydalanadi (recruiting, o'chirilmagan,
+// vaqti o'tmagan) — shu sabab sitemap va ommaviy feed doim mos bo'ladi.
+// Proyeksiya + katta `limit` (50k gacha) tufayli N+1 so'rov bo'lmaydi:
+// har bir sitemap bo'lagi bitta optimal so'rov bilan olinadi.
+func (h *Handler) Sitemap(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 || limit > sitemapMaxLimit {
+		limit = sitemapMaxLimit
+	}
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	filter := bson.M{"isDeleted": bson.M{"$ne": true}, "status": "recruiting"}
+	filter["$expr"] = notExpiredExpr(time.Now(), feedExpiryGrace)
+
+	// Barqaror tartib (_id) + proyeksiya — sahifalash to'g'ri ishlashi va
+	// so'rov yengil bo'lishi uchun. (Juda katta hajmda keyinchalik _id-range
+	// pagination'ga o'tish mumkin; hozircha skip yetarli.)
+	opts := options.Find().
+		SetProjection(bson.M{"_id": 1, "updatedAt": 1, "createdAt": 1, "publishedAt": 1}).
+		SetSort(bson.D{{Key: "_id", Value: 1}}).
+		SetSkip(int64((page - 1) * limit)).
+		SetLimit(int64(limit))
+
+	cur, err := h.Col.Find(r.Context(), filter, opts)
+	if err != nil {
+		httpx.Err(w, err)
+		return
+	}
+	defer cur.Close(r.Context())
+
+	out := []sitemapItem{}
+	for cur.Next(r.Context()) {
+		var e models.Elon
+		if err := cur.Decode(&e); err == nil {
+			out = append(out, sitemapItem{
+				ID:          e.ID,
+				UpdatedAt:   e.UpdatedAt,
+				CreatedAt:   e.CreatedAt,
+				PublishedAt: e.PublishedAt,
+			})
+		}
+	}
+	total, _ := h.Col.CountDocuments(r.Context(), filter)
+
+	// CDN/proxy uchun ham 5 daqiqa cache (frontend ISR bilan mos — #7).
+	w.Header().Set("Cache-Control", "public, max-age=300, stale-while-revalidate=60")
+	httpx.JSON(w, 200, map[string]any{"items": out, "page": page, "limit": limit, "total": total})
+}
+
 // MyElons: owner's elons grouped by status.
 func (h *Handler) MyElons(w http.ResponseWriter, r *http.Request) {
 	uid, _ := primitive.ObjectIDFromHex(httpx.UserID(r))

@@ -140,6 +140,7 @@ func main() {
 
 		// Public listing
 		r.Get("/elons", elonH.Feed)
+		r.Get("/elons/sitemap", elonH.Sitemap) // XML sitemap uchun yengil ro'yxat
 		r.Get("/elons/{id}", elonH.Get)
 		r.Get("/users/{id}", userH.GetPublic)
 		r.Get("/users", userH.Search)
