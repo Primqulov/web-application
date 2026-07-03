@@ -33,7 +33,14 @@ export function Shell({ title, search, children }: { title: string; search?: Rea
   // Auth gate
   useEffect(() => { if (!getAccess()) router.replace("/login"); }, [router]);
 
-  const { data: me } = useQuery<User>({ queryKey: ["me"], queryFn: () => api.get<User>("/api/me"), retry: false });
+  const { data: me, isError: meError } = useQuery<User>({ queryKey: ["me"], queryFn: () => api.get<User>("/api/me"), retry: false });
+
+  // Sessiya tugagan bo'lsa /api/me 401 qaytaradi va api.ts tokenlarni tozalaydi.
+  // Token tozalangan bo'lsa (getAccess() null) — foydalanuvchini login sahifasiga
+  // yo'naltiramiz. Boshqa (masalan server) xatolarida bu ishlamaydi.
+  useEffect(() => {
+    if (meError && !getAccess()) router.replace("/login");
+  }, [meError, router]);
   const { data: notifs } = useQuery<Notification[]>({
     queryKey: ["notifications"],
     queryFn: () => api.get<Notification[]>("/api/notifications"),

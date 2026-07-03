@@ -59,6 +59,13 @@ async function request<T>(
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {
+    // Sessiya tugagan yoki token yaroqsiz (401) — saqlangan foydalanuvchi
+    // tokenlarini tozalaymiz. Shunda ilova "kirgan" holatda qotib qolmaydi
+    // va foydalanuvchi qaytadan login qilishga yo'naltiriladi.
+    if (res.status === 401 && auth === "user") {
+      setAccess(null);
+      setRefresh(null);
+    }
     const err: APIError = (data && data.error) || { code: "http", message: `HTTP ${res.status}` };
     throw err;
   }
