@@ -1,6 +1,6 @@
-// SEO uchun umumiy konstantalar va yordamchilar. Sayt manzili build vaqtida
-// NEXT_PUBLIC_SITE_URL bilan boshqariladi (aks holda production domeni).
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://ishchibormi.uz").replace(/\/$/, "");
+// SEO uchun umumiy konstantalar va yordamchilar.
+// Sayt manzili — barcha sitemap/robots/canonical/OG havolalari shundan quriladi.
+export const SITE_URL = "https://ishchibormi.uz";
 export const SITE_NAME = "Ishchi Bormi";
 export const SITE_DESCRIPTION =
   "Ishchi Bormi — O'zbekiston uchun kunlik ish va mardikor bozori. Tasdiqlangan profillar, " +
