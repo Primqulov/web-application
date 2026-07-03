@@ -182,7 +182,7 @@ export default function Landing() {
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl mx-auto">
               <Cat icon={<Sparkles size={20} />}        label="Tozalash" />
               <Cat icon={<Truck size={20} />}           label="Yuk tashish" />
-              <Cat icon={<Hammer size={20} />}          label="Ustachilik" />
+              <Cat icon={<Hammer size={20} />}          label="Maxsus" />
             </div>
           </div>
         </section>

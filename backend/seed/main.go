@@ -54,7 +54,7 @@ type catSeed struct {
 var categories = []catSeed{
 	{"Tozalash", "tozalash", "🧹", true},
 	{"Yuk tashish", "yuk-tashish", "🚚", true},
-	{"Ustachilik", "ustachilik", "🛠️", true},
+	{"Maxsus", "maxsus", "🔧", true},
 }
 
 type elonSeed struct {
@@ -75,10 +75,10 @@ var elonSeeds = []elonSeed{
 	{"Uy ko'chirish", "1 xonali uyni Sergeli tumaniga ko'chirish.", "Yuk tashish", 2, "negotiable", 0, "recruiting"},
 	{"Yuk mashinada ko'chirish", "Buyumlarni boshqa shaharga olib borish.", "Yuk tashish", 4, "total", 1200000, "completed"},
 	{"Kuryer kerak (1 kunlik)", "Shahar bo'ylab paket yetkazib berish.", "Yuk tashish", 1, "per_worker", 120000, "in_progress"},
-	{"Santexnika xizmati", "Hammomdagi kran va lavabo ta'mirlash.", "Ustachilik", 1, "total", 250000, "recruiting"},
-	{"Eshik ta'mirlash", "Yog'och eshikni tuzatish.", "Ustachilik", 1, "total", 150000, "recruiting"},
-	{"Mebel yig'ish", "IKEA tipidagi mebellarni yig'ish.", "Ustachilik", 2, "per_worker", 120000, "completed"},
-	{"Devorlarni bo'yash", "Yangi yotoq xonasi devorlarini bo'yash.", "Ustachilik", 2, "per_worker", 200000, "filled"},
+	{"Santexnika xizmati", "Hammomdagi kran va lavabo ta'mirlash.", "Maxsus", 1, "total", 250000, "recruiting"},
+	{"Elektrik xizmati", "Uydagi rozetka va simlarni ta'mirlash.", "Maxsus", 1, "total", 180000, "recruiting"},
+	{"Mebel yig'ish", "IKEA tipidagi mebellarni yig'ish.", "Maxsus", 2, "per_worker", 120000, "completed"},
+	{"Devorlarni bo'yash", "Yangi yotoq xonasi devorlarini bo'yash.", "Maxsus", 2, "per_worker", 200000, "filled"},
 }
 
 func main() {

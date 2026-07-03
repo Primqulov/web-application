@@ -48,6 +48,11 @@ func main() {
 	if err := db.EnsureIndexes(ctx, mdb); err != nil {
 		log.Warn("ensure indexes", "err", err)
 	}
+	// Turkumlarni kanonik ro'yxatga moslashtiramiz (har deploy'da avtomatik):
+	// faqat 3 turkum faol qoladi, eskilari nofaol qilinadi. Ma'lumot o'chmaydi.
+	if err := category.EnsureDefaults(ctx, mdb); err != nil {
+		log.Warn("ensure categories", "err", err)
+	}
 
 	// services
 	notif := notification.New(mdb)
