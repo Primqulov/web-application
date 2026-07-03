@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL, API_BASE } from "@/lib/seo";
 
-// Sitemap har soatda yangilanadi (ISR) — build vaqtida API kerak emas.
-export const revalidate = 3600;
+// Sitemap har so'rovda jonli generatsiya qilinadi — build vaqtida API kerak
+// emas va deploy'dan keyin darhol joriy e'lonlarni o'z ichiga oladi.
+export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
@@ -19,7 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Dinamik e'lonlar — API'dan olamiz (xatolik bo'lsa faqat statiklar qaytadi).
   let elonPages: MetadataRoute.Sitemap = [];
   try {
-    const res = await fetch(`${API_BASE}/api/elons?limit=100&sort=time`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${API_BASE}/api/elons?limit=100&sort=time`, { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
       const items: any[] = data?.items || [];
