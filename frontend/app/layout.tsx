@@ -8,6 +8,9 @@ import {
   SITE_DESCRIPTION,
   SITE_OG_DESCRIPTION,
   SITE_KEYWORDS,
+  OG_IMAGE,
+  OG_IMAGE_WIDTH,
+  OG_IMAGE_HEIGHT,
 } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -23,8 +26,19 @@ export const metadata: Metadata = {
   creator: SITE_NAME,
   publisher: SITE_NAME,
   alternates: { canonical: "/" },
-  // Favicon / apple-touch-icon — app/icon.png va app/apple-icon.png fayllari orqali
-  // (Next.js file-convention) avtomatik ulanadi.
+  // Favicon / apple-touch-icon / shortcut — public/ fayllaridan (Metadata API).
+  // Head'da dublikat bo'lmasligi uchun app/*.png|ico file-convention'lari olib
+  // tashlangan; barcha ikonkalar shu yagona `icons` konfiguratsiyasidan chiqadi.
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.png", type: "image/png", sizes: "48x48" },
+      { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icons/icon-512.png", type: "image/png", sizes: "512x512" },
+    ],
+    shortcut: ["/favicon.ico"],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   robots: {
     index: true,
     follow: true,
@@ -43,13 +57,17 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     title: SITE_TITLE,
     description: SITE_OG_DESCRIPTION,
-    // OG rasmi app/opengraph-image.png fayli orqali avtomatik ulanadi.
+    // Telegram/Facebook/LinkedIn ulashuv rasmi (metadataBase → absolyut URL).
+    images: [
+      { url: OG_IMAGE, width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT, alt: SITE_NAME, type: "image/png" },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: SITE_TITLE,
     description: SITE_OG_DESCRIPTION,
-    // Twitter rasmi app/twitter-image.png fayli orqali avtomatik ulanadi.
+    // X (Twitter) ulashuv rasmi — OG bilan bir xil (metadataBase → absolyut URL).
+    images: [OG_IMAGE],
   },
   category: "business",
   formatDetection: { telephone: true },

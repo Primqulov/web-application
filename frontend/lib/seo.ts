@@ -23,9 +23,14 @@ export const SITE_KEYWORDS = [
   "santexnik", "elektrik", "usta", "O‘zbekiston",
 ];
 
-// Eslatma: OG/Twitter rasmi va favicon/apple/PWA ikonkalari Next.js file-convention
-// orqali beriladi — app/opengraph-image.png, app/twitter-image.png, app/icon.png,
-// app/apple-icon.png va public/icons/* (manifest.ts). URL'lar avtomatik hosil bo'ladi.
+// Ijtimoiy tarmoq (OG/Twitter) ulashuv rasmi — Telegram/Facebook/X va Google.
+// metadataBase bilan birga absolyut URL'ga aylanadi: https://ishchibormi.uz/img/OGimg.png
+export const OG_IMAGE = "/img/OGimg.png";
+export const OG_IMAGE_WIDTH = 1200;
+export const OG_IMAGE_HEIGHT = 630;
+
+// Favicon/apple/PWA ikonkalari public/ ostidan Metadata API `icons` orqali beriladi
+// (layout.tsx). PWA ikonkalari public/icons/* (manifest.ts) orqali.
 
 // API bazaviy manzili (server tomonda ham ishlaydi — absolyut bo'lishi shart).
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080").replace(/\/$/, "");

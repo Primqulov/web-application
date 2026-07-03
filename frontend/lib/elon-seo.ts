@@ -9,15 +9,13 @@
 import { cache } from "react";
 import type { Metadata } from "next";
 import type { Elon } from "@/lib/api";
-import { SITE_NAME, absUrl, fetchElon } from "@/lib/seo";
+import { SITE_NAME, absUrl, fetchElon, OG_IMAGE } from "@/lib/seo";
 
 // ---- Konstantalar --------------------------------------------------------
 
 const MAX_TITLE_LEN = 60; // Google natijalarida title odatda ~60 belgigacha ko'rinadi.
 const MAX_DESC_LEN = 160; // Meta description 140–160 belgi oralig'ida bo'lsin.
 const BRAND_SUFFIX = ` | ${SITE_NAME}`; // " | Ishchi Bormi"
-// Rasm bo'lmaganda ijtimoiy tarmoq/qidiruv uchun zaxira OG rasmi.
-const OG_FALLBACK_IMAGE = "/img/OGimg.png";
 // Har bir e'lon uchun bir xil, ammo lead qismidan keyin keladigan CTA —
 // snippet foydali bo'lsin va description uzunligi 140–160 ga yetsin.
 const DESC_CTA =
@@ -130,7 +128,7 @@ export function buildKeywords(e: Elon): string[] {
 /** OG/Twitter rasmlari — e'lon rasmlari yoki zaxira OGimg. */
 function ogImages(e: Elon): string[] {
   const imgs = (e.images ?? []).filter(Boolean);
-  return imgs.length ? imgs.slice(0, 4) : [absUrl(OG_FALLBACK_IMAGE)];
+  return imgs.length ? imgs.slice(0, 4) : [absUrl(OG_IMAGE)];
 }
 
 // ---- Metadata ------------------------------------------------------------
