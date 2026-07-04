@@ -115,6 +115,20 @@ jobs:
             set_env TELEGRAM_BOT_TOKEN "$BOT_TOKEN"
             set_env TELEGRAM_BOT_USERNAME Ishchi_bormi_auth_bot
 
+            echo "==> MongoDB ulanishini .env ga yozish (GitHub secret bo'lsa)"
+            # MONGO_URI maxfiy (parol bor) -> faqat GitHub secret orqali keladi,
+            # hech qachon repoga yozilmaydi. Secret o'rnatilgan bo'lsa serverdagi
+            # .env yangilanadi; bo'lmasa mavjud qiymat saqlanadi (deploy buzilmaydi).
+            MONGO_URI_SECRET='${{ secrets.MONGO_URI }}'
+            if [ -n "$MONGO_URI_SECRET" ]; then
+              set_env MONGO_URI "$MONGO_URI_SECRET"
+              MONGO_DB_SECRET='${{ secrets.MONGO_DB }}'
+              set_env MONGO_DB "${MONGO_DB_SECRET:-ishchibormi}"
+              echo "MONGO_URI .env ga yozildi."
+            else
+              echo "OGOHLANTIRISH: MONGO_URI secret o'rnatilmagan -> serverdagi mavjud .env qiymati saqlanadi."
+            fi
+
             echo "==> Konteynerlarni qayta build qilib ishga tushirish"
             docker compose up --build -d --remove-orphans
 
