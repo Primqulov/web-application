@@ -6,7 +6,9 @@ import {
   Star, ShieldCheck, CheckCircle2, Clock, MessageSquare, ShieldAlert,
   MapPin, User as UserIcon, Sparkles, Truck, Hammer,
   Phone, Send, ArrowRight, Search, ArrowUpRight,
+  Mail, Instagram, Youtube, LifeBuoy,
 } from "lucide-react";
+import { CONTACT, SOCIAL } from "@/lib/contact";
 import { api, Elon, User, getAccess } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
@@ -227,8 +229,12 @@ export default function Landing() {
               <T>Sizning ishonchli ishchi kuchi bozoringiz.</T>
             </p>
             <ul className="mt-4 space-y-1.5 muted">
-              <li className="flex items-center gap-2"><Phone size={13} />+998 90 123 45 67</li>
-              <li className="flex items-center gap-2"><Send size={13} />@ishchibormi</li>
+              <li><a href={CONTACT.phoneHref} className="flex items-center gap-2 hover:heading"><Phone size={13} />{CONTACT.phone}</a></li>
+              <li><a href={CONTACT.emailHref} className="flex items-center gap-2 hover:heading"><Mail size={13} />{CONTACT.email}</a></li>
+              <li><a href={SOCIAL.telegram.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:heading"><Send size={13} />Telegram {SOCIAL.telegram.label}</a></li>
+              <li><a href={SOCIAL.support.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:heading"><LifeBuoy size={13} />Support {SOCIAL.support.label}</a></li>
+              <li><a href={SOCIAL.instagram.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:heading"><Instagram size={13} />Instagram {SOCIAL.instagram.label}</a></li>
+              <li><a href={SOCIAL.youtube.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:heading"><Youtube size={13} />YouTube {SOCIAL.youtube.label}</a></li>
               <li className="flex items-center gap-2"><MapPin size={13} /><T>Toshkent sh., Yunusobod tumani</T></li>
             </ul>
           </div>

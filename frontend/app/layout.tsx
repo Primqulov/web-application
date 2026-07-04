@@ -12,6 +12,7 @@ import {
   OG_IMAGE_WIDTH,
   OG_IMAGE_HEIGHT,
 } from "@/lib/seo";
+import { CONTACT, SOCIAL_SAMEAS } from "@/lib/contact";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -73,10 +74,38 @@ export const metadata: Metadata = {
   formatDetection: { telephone: true },
 };
 
+// Google uchun tashkilot ma'lumoti (aloqa + ijtimoiy tarmoq profillari).
+const organizationLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: SITE_NAME,
+  url: SITE_URL,
+  logo: `${SITE_URL}/icons/icon-512.png`,
+  email: CONTACT.email,
+  telephone: CONTACT.phoneHref.replace("tel:", ""),
+  contactPoint: [
+    {
+      "@type": "ContactPoint",
+      telephone: CONTACT.phoneHref.replace("tel:", ""),
+      email: CONTACT.email,
+      contactType: "customer support",
+      areaServed: "UZ",
+      availableLanguage: ["uz", "ru"],
+    },
+  ],
+  sameAs: SOCIAL_SAMEAS,
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="uz" suppressHydrationWarning>
       <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationLd).replace(/</g, "\\u003c"),
+          }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>

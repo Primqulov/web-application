@@ -3,8 +3,9 @@ import Link from "next/link";
 import {
   FileCheck2, UserPlus, ShieldAlert, Ban, ClipboardList, Handshake,
   Star, Wallet, Copyright, Scale, OctagonAlert, Gavel, RefreshCw, Mail,
-  Phone, Send, MapPin, AlertCircle, CheckSquare,
+  Phone, Send, MapPin, AlertCircle, CheckSquare, LifeBuoy, Instagram, Youtube,
 } from "lucide-react";
+import { CONTACT, SOCIAL } from "@/lib/contact";
 import { ScriptToggle } from "@/components/ScriptToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { T } from "@/components/T";
@@ -214,9 +215,12 @@ export default function TermsPage() {
           <Sec id="contact" icon={<Mail size={18} />} title="Aloqa">
             <P><T>Savollar yoki tushuntirishlar uchun biz bilan bog'laning:</T></P>
             <div className="mt-3 grid sm:grid-cols-3 gap-3 text-sm">
-              <Contact icon={<Mail size={16} />} text="support@ishchibormi.uz" />
-              <Contact icon={<Phone size={16} />} text="+998 90 123 45 67" />
-              <Contact icon={<Send size={16} />} text="@ishchibormi" />
+              <Contact icon={<Mail size={16} />} text={CONTACT.email} href={CONTACT.emailHref} />
+              <Contact icon={<Phone size={16} />} text={CONTACT.phone} href={CONTACT.phoneHref} />
+              <Contact icon={<Send size={16} />} text={SOCIAL.telegram.label} href={SOCIAL.telegram.href} />
+              <Contact icon={<LifeBuoy size={16} />} text={SOCIAL.support.label} href={SOCIAL.support.href} />
+              <Contact icon={<Instagram size={16} />} text={SOCIAL.instagram.label} href={SOCIAL.instagram.href} />
+              <Contact icon={<Youtube size={16} />} text={SOCIAL.youtube.label} href={SOCIAL.youtube.href} />
             </div>
           </Sec>
 
@@ -281,11 +285,18 @@ function Note({ children, kind = "info" }: { children: React.ReactNode; kind?: "
   );
 }
 
-function Contact({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <div className="rounded-xl border p-3 flex items-center gap-2" style={{ borderColor: "var(--border)" }}>
+function Contact({ icon, text, href }: { icon: React.ReactNode; text: string; href?: string }) {
+  const inner = (
+    <>
       <span className="text-accent-amber">{icon}</span>
-      <span className="text-sm">{text}</span>
-    </div>
+      <span className="text-sm break-all">{text}</span>
+    </>
+  );
+  const cls = "rounded-xl border p-3 flex items-center gap-2";
+  return href ? (
+    <a href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noreferrer"
+       className={`${cls} hover:shadow-md transition`} style={{ borderColor: "var(--border)" }}>{inner}</a>
+  ) : (
+    <div className={cls} style={{ borderColor: "var(--border)" }}>{inner}</div>
   );
 }

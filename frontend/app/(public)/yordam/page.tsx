@@ -5,7 +5,9 @@ import {
   HelpCircle, Search, ChevronDown, LogIn, ClipboardList, Handshake,
   Star, ShieldAlert, Settings, Sparkles,
   Mail, Phone, Send, MapPin, BookOpen, ArrowRight, LifeBuoy,
+  Instagram, Youtube,
 } from "lucide-react";
+import { CONTACT, SOCIAL } from "@/lib/contact";
 import { ScriptToggle } from "@/components/ScriptToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { T, useT } from "@/components/T";
@@ -22,7 +24,7 @@ const CATEGORIES: { id: string; label: string; icon: any; questions: FAQ[] }[] =
       { q: "Tizimga qanday kirishim mumkin?",
         a: "Bosh sahifadagi 'Kirish' tugmasini bosing, so'ng Telegram botimizga o'ting, /start tugmasini bosing va telefon raqamingizni ulashing. Bot sizga 6 xonali kod yuboradi. Shu kodni saytdagi 'Tasdiqlash kodi' maydoniga kiriting." },
       { q: "Telegram bot kod yubormayapti, nima qilishim kerak?",
-        a: "Botda /start tugmasini qaytadan bosing va telefon raqamni qayta yuboring. Agar yana ishlamasa, bot bilan suhbatni qaytadan ochib ko'ring yoki support@ishchibormi.uz ga murojaat qiling." },
+        a: "Botda /start tugmasini qaytadan bosing va telefon raqamni qayta yuboring. Agar yana ishlamasa, bot bilan suhbatni qaytadan ochib ko'ring yoki ishchibormi@gmail.com ga murojaat qiling." },
       { q: "Kod 'noto'g'ri yoki muddati o'tgan' deyapti.",
         a: "Kod 5 daqiqa amal qiladi. Yangi kod olish uchun botda /start tugmasini qaytadan bosing." },
       { q: "Telefon raqamim bilan kirish mumkinmi?",
@@ -82,7 +84,7 @@ const CATEGORIES: { id: string; label: string; icon: any; questions: FAQ[] }[] =
       { q: "Shikoyatni qanday yo'llash mumkin?",
         a: "Har qanday foydalanuvchi, e'lon yoki xabar yonida 'Shikoyat' tugmasi bor. Sabab va izoh yozib yuboring — adminlarimiz ko'rib chiqadi." },
       { q: "Hisobim bloklandi, nima qilay?",
-        a: "Bloklash sababini bilish va apellyatsiya qilish uchun support@ishchibormi.uz ga email yuboring. 3-5 ish kuni ichida javob qaytaramiz." },
+        a: "Bloklash sababini bilish va apellyatsiya qilish uchun ishchibormi@gmail.com ga email yuboring. 3-5 ish kuni ichida javob qaytaramiz." },
       { q: "Telefon raqamim boshqalarga ko'rsatiladimi?",
         a: "Faqat siz ariza topshirgan e'lon egasiga (yoki sizning e'loningizga ariza topshirgan ishchiga) ko'rsatiladi. Boshqa hollarda yashirin saqlanadi." },
     ],
@@ -237,16 +239,19 @@ export default function HelpPage() {
               <h3 className="font-semibold heading"><T>Javob topa olmadingizmi?</T></h3>
               <p className="text-sm muted mt-1"><T>Bizga yozing — odatda 24 soat ichida javob qaytaramiz.</T></p>
             </div>
-            <a href="mailto:support@ishchibormi.uz" className="btn-primary gap-2">
+            <a href={CONTACT.emailHref} className="btn-primary gap-2">
               <Mail size={16} /><T>Email yozish</T>
             </a>
           </div>
 
           {/* ── Contact channels ── */}
           <section className="grid sm:grid-cols-3 gap-3">
-            <Contact icon={<Mail size={18} />}  title="Email"    text="support@ishchibormi.uz" href="mailto:support@ishchibormi.uz" />
-            <Contact icon={<Phone size={18} />} title="Telefon"  text="+998 90 123 45 67"      href="tel:+998901234567" />
-            <Contact icon={<Send size={18} />}  title="Telegram" text="@ishchibormi"           href="https://t.me/ishchibormi" />
+            <Contact icon={<Mail size={18} />}      title="Email"     text={CONTACT.email}          href={CONTACT.emailHref} />
+            <Contact icon={<Phone size={18} />}     title="Telefon"   text={CONTACT.phone}          href={CONTACT.phoneHref} />
+            <Contact icon={<Send size={18} />}      title="Telegram"  text={SOCIAL.telegram.label}  href={SOCIAL.telegram.href} />
+            <Contact icon={<LifeBuoy size={18} />}  title="Support"   text={SOCIAL.support.label}   href={SOCIAL.support.href} />
+            <Contact icon={<Instagram size={18} />} title="Instagram" text={SOCIAL.instagram.label} href={SOCIAL.instagram.href} />
+            <Contact icon={<Youtube size={18} />}   title="YouTube"   text={SOCIAL.youtube.label}   href={SOCIAL.youtube.href} />
           </section>
         </article>
       </main>

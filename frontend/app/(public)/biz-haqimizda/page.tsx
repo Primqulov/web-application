@@ -3,7 +3,9 @@ import Link from "next/link";
 import {
   ShieldCheck, Sparkles, Target, Eye, Heart, Users, HandHeart,
   CheckCircle2, Briefcase, Star, MapPin, Phone, Send, ArrowRight,
+  Mail, Instagram, Youtube, LifeBuoy,
 } from "lucide-react";
+import { CONTACT, SOCIAL } from "@/lib/contact";
 import { ScriptToggle } from "@/components/ScriptToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { T } from "@/components/T";
@@ -164,8 +166,12 @@ export default function AboutPage() {
           <div>
             <div className="font-extrabold heading text-lg">Ishchi Bormi</div>
             <ul className="mt-3 space-y-1.5 muted">
-              <li className="flex items-center gap-2"><Phone size={14} />+998 90 123 45 67</li>
-              <li className="flex items-center gap-2"><Send size={14} />@ishchibormi</li>
+              <li><a href={CONTACT.phoneHref} className="flex items-center gap-2 hover:heading"><Phone size={14} />{CONTACT.phone}</a></li>
+              <li><a href={CONTACT.emailHref} className="flex items-center gap-2 hover:heading"><Mail size={14} />{CONTACT.email}</a></li>
+              <li><a href={SOCIAL.telegram.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:heading"><Send size={14} />Telegram {SOCIAL.telegram.label}</a></li>
+              <li><a href={SOCIAL.support.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:heading"><LifeBuoy size={14} />Support {SOCIAL.support.label}</a></li>
+              <li><a href={SOCIAL.instagram.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:heading"><Instagram size={14} />Instagram {SOCIAL.instagram.label}</a></li>
+              <li><a href={SOCIAL.youtube.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:heading"><Youtube size={14} />YouTube {SOCIAL.youtube.label}</a></li>
               <li className="flex items-center gap-2"><MapPin size={14} /><T>Toshkent sh., Yunusobod tumani</T></li>
             </ul>
             <p className="mt-4 text-xs muted">© 2026 Ishchi Bormi. <T>Barcha huquqlar himoyalangan.</T></p>
