@@ -172,7 +172,6 @@ export default function AboutPage() {
               <li><a href={SOCIAL.support.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:heading"><LifeBuoy size={14} />Support {SOCIAL.support.label}</a></li>
               <li><a href={SOCIAL.instagram.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:heading"><Instagram size={14} />Instagram {SOCIAL.instagram.label}</a></li>
               <li><a href={SOCIAL.youtube.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:heading"><Youtube size={14} />YouTube {SOCIAL.youtube.label}</a></li>
-              <li className="flex items-center gap-2"><MapPin size={14} /><T>Toshkent sh., Yunusobod tumani</T></li>
             </ul>
             <p className="mt-4 text-xs muted">© 2026 Ishchi Bormi. <T>Barcha huquqlar himoyalangan.</T></p>
           </div>

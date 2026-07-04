@@ -235,7 +235,6 @@ export default function Landing() {
               <li><a href={SOCIAL.support.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:heading"><LifeBuoy size={13} />Support {SOCIAL.support.label}</a></li>
               <li><a href={SOCIAL.instagram.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:heading"><Instagram size={13} />Instagram {SOCIAL.instagram.label}</a></li>
               <li><a href={SOCIAL.youtube.href} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:heading"><Youtube size={13} />YouTube {SOCIAL.youtube.label}</a></li>
-              <li className="flex items-center gap-2"><MapPin size={13} /><T>Toshkent sh., Yunusobod tumani</T></li>
             </ul>
           </div>
           <div>

@@ -260,8 +260,7 @@ export default function HelpPage() {
       <footer className="mt-auto border-t" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
         <div className="mx-auto max-w-6xl px-4 py-6 grid md:grid-cols-2 gap-4 text-sm">
           <div className="flex items-center gap-2 muted">
-            <MapPin size={14} /><T>Toshkent sh., Yunusobod tumani</T>
-            <span className="ml-auto md:ml-0">· © 2026 Ishchi Bormi</span>
+            <span>© 2026 Ishchi Bormi</span>
           </div>
           <div className="flex md:justify-end gap-5 muted">
             <Link href="/biz-haqimizda"><T>Biz haqimizda</T></Link>

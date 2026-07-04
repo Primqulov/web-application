@@ -6,7 +6,6 @@ export const CONTACT = {
   phoneHref: "tel:+998900202535",
   email: "ishchibormi@gmail.com",
   emailHref: "mailto:ishchibormi@gmail.com",
-  address: "Toshkent sh., Yunusobod tumani",
 } as const;
 
 export type SocialLink = { label: string; href: string };
