@@ -1,41 +1,56 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { Star, MapPin, Clock, Share2, ArrowUpRight, Briefcase } from "lucide-react";
+import { Star, MapPin, Clock, Share2, ArrowUpRight, Briefcase, SlidersHorizontal, X } from "lucide-react";
 import { api, Category, Elon } from "@/lib/api";
 import { Shell, ShellSearch } from "@/components/Shell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CardSkeleton } from "@/components/ui/Skeleton";
-import { Select } from "@/components/ui/Input";
+import { Select, TextInput } from "@/components/ui/Input";
 import { Avatar } from "@/components/ui/Avatar";
 import { ShareModal } from "@/components/ShareModal";
 import { T, useT } from "@/components/T";
-import { fmtSumSom, fromNow } from "@/lib/format";
+import { fmtSumSom, fromNow, onlyDigits, fmtThousands } from "@/lib/format";
+import { REGIONS } from "@/lib/regions";
 
 export default function Dashboard() {
   const t = useT();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("");
   const [sort, setSort] = useState<string>("time");
+  const [region, setRegion] = useState<string>("");
+  const [minPrice, setMinPrice] = useState<string>("");
+  const [maxPrice, setMaxPrice] = useState<string>("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Faol (bo'sh bo'lmagan) filtrlar soni — "Filtr" tugmasidagi belgi uchun.
+  const activeFilters = [region, minPrice, maxPrice].filter(Boolean).length;
 
   const { data: cats } = useQuery<Category[]>({
     queryKey: ["categories"],
     queryFn: () => api.get<Category[]>("/api/categories"),
   });
   const { data, isLoading } = useQuery<{ items: Elon[] }>({
-    queryKey: ["feed", q, cat, sort],
+    queryKey: ["feed", q, cat, sort, region, minPrice, maxPrice],
     queryFn: () => {
       const p = new URLSearchParams();
       if (q) p.set("q", q);
       if (cat) p.set("categoryId", cat);
       if (sort) p.set("sort", sort);
+      if (region) p.set("region", region);
+      if (minPrice) p.set("minPrice", onlyDigits(minPrice));
+      if (maxPrice) p.set("maxPrice", onlyDigits(maxPrice));
       return api.get<{ items: Elon[] }>(`/api/elons?${p.toString()}`);
     },
   });
 
   const items = data?.items || [];
   const search = <ShellSearch value={q} onChange={setQ} placeholder={t("Xizmatlar yoki ishchilarni qidiring…")} />;
+
+  function resetFilters() {
+    setRegion(""); setMinPrice(""); setMaxPrice(""); setCat("");
+  }
 
   return (
     <Shell title="Bosh sahifa" search={search}>
@@ -50,21 +65,65 @@ export default function Dashboard() {
       </div>
 
       {/* Header strip */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-base font-semibold heading"><T>Ish e'lonlari</T></h2>
           <p className="text-xs muted mt-0.5">
             <T>Topildi</T>: <b className="heading">{items.length}</b> <T>ta e'lon</T>
           </p>
         </div>
-        <div className="w-44">
-          <Select value={sort} onChange={(e) => setSort(e.target.value)}>
-            <option value="time">{t("Eng yangilari")}</option>
-            <option value="price">{t("Yuqori narx")}</option>
-            <option value="rating">{t("Yuqori reyting")}</option>
-          </Select>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFilters((s) => !s)}
+            className={`btn btn-secondary gap-2 ${showFilters || activeFilters > 0 ? "ring-1 ring-[color:var(--brand)]" : ""}`}
+          >
+            <SlidersHorizontal size={16} /><T>Filtr</T>
+            {activeFilters > 0 && (
+              <span className="grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-navy text-white text-[10px] font-bold">
+                {activeFilters}
+              </span>
+            )}
+          </button>
+          <div className="w-44">
+            <Select value={sort} onChange={(e) => setSort(e.target.value)}>
+              <option value="time">{t("Eng yangilari")}</option>
+              <option value="price">{t("Yuqori narx")}</option>
+              <option value="rating">{t("Yuqori reyting")}</option>
+            </Select>
+          </div>
         </div>
       </div>
+
+      {/* Filtr paneli */}
+      {showFilters && (
+        <div className="card p-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-fade-in">
+          <Select label={t("Joylashuv")} value={region} onChange={(e) => setRegion(e.target.value)}>
+            <option value="">{t("Barcha viloyatlar")}</option>
+            {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+          </Select>
+          <Select label={t("Kategoriya")} value={cat} onChange={(e) => setCat(e.target.value)}>
+            <option value="">{t("Barcha kategoriyalar")}</option>
+            {(cats || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </Select>
+          <TextInput
+            label={t("Narx (dan), so'm")} inputMode="numeric" placeholder="0"
+            value={minPrice}
+            onChange={(e) => setMinPrice(fmtThousands(onlyDigits(e.target.value)))}
+          />
+          <TextInput
+            label={t("Narx (gacha), so'm")} inputMode="numeric" placeholder={t("Cheklovsiz")}
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(fmtThousands(onlyDigits(e.target.value)))}
+          />
+          {activeFilters > 0 && (
+            <div className="sm:col-span-2 lg:col-span-4">
+              <button onClick={resetFilters} className="btn-ghost gap-1.5 text-sm">
+                <X size={14} /><T>Filtrlarni tozalash</T>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Grid */}
       {isLoading ? (

@@ -298,6 +298,9 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Feed(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	cat := strings.TrimSpace(r.URL.Query().Get("categoryId"))
+	region := strings.TrimSpace(r.URL.Query().Get("region"))
+	minPrice, _ := strconv.ParseInt(r.URL.Query().Get("minPrice"), 10, 64)
+	maxPrice, _ := strconv.ParseInt(r.URL.Query().Get("maxPrice"), 10, 64)
 	sort := r.URL.Query().Get("sort") // price|time|rating
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit <= 0 || limit > 100 {
@@ -320,6 +323,22 @@ func (h *Handler) Feed(w http.ResponseWriter, r *http.Request) {
 		if cid, err := primitive.ObjectIDFromHex(cat); err == nil {
 			filter["categoryId"] = cid
 		}
+	}
+	// Joylashuv (viloyat) bo'yicha filtr.
+	if region != "" {
+		filter["region"] = region
+	}
+	// Narx (ishchi boshiga) bo'yicha oraliq filtri. Kelishiladigan (perWorkerAmount=0)
+	// e'lonlar narx oralig'i berilganda ro'yxatga tushmaydi.
+	if minPrice > 0 || maxPrice > 0 {
+		priceRange := bson.M{}
+		if minPrice > 0 {
+			priceRange["$gte"] = minPrice
+		}
+		if maxPrice > 0 {
+			priceRange["$lte"] = maxPrice
+		}
+		filter["perWorkerAmount"] = priceRange
 	}
 	sortDoc := bson.D{{Key: "publishedAt", Value: -1}}
 	switch sort {
