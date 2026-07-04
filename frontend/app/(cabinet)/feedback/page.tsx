@@ -2,10 +2,12 @@
 import { Send, Lightbulb, MessageSquareWarning, ExternalLink } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { T } from "@/components/T";
+import { SOCIAL } from "@/lib/contact";
 
-// Taklif va shikoyatlar endi to'liq Telegram bot orqali qabul qilinadi.
-const BOT_USERNAME = "Ishchi_bormi_support_bot";
-const BOT_URL = `https://t.me/${BOT_USERNAME}`;
+// Taklif va shikoyatlar Telegram support boti orqali qabul qilinadi.
+// Havola/username yagona manba (lib/contact.ts -> SOCIAL.support) dan olinadi.
+const BOT_URL = SOCIAL.support.href;
+const BOT_LABEL = SOCIAL.support.label;
 
 const STEPS = [
   "Botni oching va /start ni bosing.",
@@ -54,7 +56,7 @@ export default function FeedbackPage() {
         <a href={BOT_URL} target="_blank" rel="noreferrer" className="btn-primary gap-2 justify-center py-3 text-base">
           <Send size={18} /><T>Telegram botni ochish</T><ExternalLink size={15} />
         </a>
-        <p className="text-xs muted text-center">@{BOT_USERNAME}</p>
+        <p className="text-xs muted text-center">{BOT_LABEL}</p>
       </div>
     </Shell>
   );
