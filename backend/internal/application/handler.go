@@ -127,6 +127,7 @@ func (h *Handler) Apply(w http.ResponseWriter, r *http.Request) {
 		ElonDistrict:     elon.District,
 		OwnerName:        elon.OwnerName,
 		OwnerRating:      elon.OwnerRating,
+		OwnerAvatarURL:   elon.OwnerAvatarURL,
 	}
 	if worker != nil {
 		// Worker snapshot (ish beruvchining nomzodlar ro'yxati uchun).
@@ -159,6 +160,7 @@ func (h *Handler) Apply(w http.ResponseWriter, r *http.Request) {
 					"elonTitle": elon.Title, "elonCategoryName": elon.CategoryName,
 					"elonRegion": elon.Region, "elonDistrict": elon.District,
 					"ownerName": elon.OwnerName, "ownerRating": elon.OwnerRating,
+					"ownerAvatarUrl": elon.OwnerAvatarURL,
 					"workerName": app.WorkerName, "workerRating": app.WorkerRating,
 					"workerReviewsCount": app.WorkerReviewsCount, "workerAvatarUrl": app.WorkerAvatarURL,
 					"workerVerified": app.WorkerVerified,

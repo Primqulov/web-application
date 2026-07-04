@@ -5,6 +5,7 @@ import { api, Application, Notification, Elon } from "@/lib/api";
 import { Shell } from "@/components/Shell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SlotProgress } from "@/components/ui/SlotProgress";
+import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/Modal";
 import { Phone, MapPin, ChevronDown, ExternalLink } from "lucide-react";
 import { T, useT } from "@/components/T";
@@ -114,7 +115,12 @@ export default function Process() {
                 <StatusBadge status={a.status} />
               </div>
               <div className="text-xs text-[color:var(--text-muted)] mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-                {a.ownerName && <span><T>Ish beruvchi</T>: <span className="font-medium text-[color:var(--text)]">{a.ownerName}</span></span>}
+                {a.ownerName && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Avatar name={a.ownerName} src={a.ownerAvatarUrl} size="xs" />
+                    <span><T>Ish beruvchi</T>: <span className="font-medium text-[color:var(--text)]">{a.ownerName}</span></span>
+                  </span>
+                )}
                 <span><T>Ariza</T>: {a.peopleCount || 1} <T>kishi</T></span>
               </div>
               {a.status === "pending" && <p className="text-sm text-[color:var(--text-muted)] mt-2"><T>Ariza ko'rib chiqilmoqda…</T></p>}
@@ -181,7 +187,7 @@ export default function Process() {
                 </Link>
                 {apps.map((a) => (
                   <div key={a.id} className="flex flex-wrap items-center gap-2 border-t pt-2" style={{ borderColor: "var(--border)" }}>
-                    <div className="grid h-8 w-8 place-items-center rounded-full bg-brand-navy text-white text-xs uppercase">{(a.workerName?.trim()?.[0]) || a.workerPhone?.slice(-2) || "?"}</div>
+                    <Avatar name={a.workerName?.trim() || a.workerPhone} src={a.workerAvatarUrl} size="sm" />
                     <div className="mr-auto min-w-0">
                       <div className="font-medium text-sm inline-flex items-center gap-1.5">
                         {unreadAppIds.has(a.id) && <span className="h-2 w-2 rounded-full bg-danger shrink-0" />}

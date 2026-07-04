@@ -157,6 +157,7 @@ export interface Application {
   workerName?: string;
   workerAvatarUrl?: string;
   ownerName?: string;
+  ownerAvatarUrl?: string;
   peopleCount?: number;
   amount: number;
   isNegotiable: boolean;

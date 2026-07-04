@@ -146,6 +146,7 @@ type Application struct {
 	ElonDistrict     string  `bson:"elonDistrict,omitempty" json:"elonDistrict"`
 	OwnerName        string  `bson:"ownerName,omitempty" json:"ownerName"`
 	OwnerRating      float64 `bson:"ownerRating,omitempty" json:"ownerRating"`
+	OwnerAvatarURL   string  `bson:"ownerAvatarUrl,omitempty" json:"ownerAvatarUrl"`
 	Amount                 int64              `bson:"amount" json:"amount"`
 	IsNegotiable           bool               `bson:"isNegotiable" json:"isNegotiable"`
 	Status                 string             `bson:"status" json:"status"` // pending|accepted|rejected|cancelled|completed

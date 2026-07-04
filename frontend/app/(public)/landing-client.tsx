@@ -109,7 +109,7 @@ export default function Landing() {
                 <Link key={e.id || i} href={e.id ? `/elon/${e.id}` : ctaHref}
                       className="card p-5 block transition hover:-translate-y-0.5 hover:shadow-pop animate-fade-in">
                   <div className="flex items-start gap-3">
-                    <Avatar name={e.ownerName || e.owner} />
+                    <Avatar name={e.ownerName || e.owner} src={e.ownerAvatarUrl} />
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold heading line-clamp-1"><T>{e.title}</T></div>
                       <div className="text-xs muted mt-0.5 flex items-center gap-1">

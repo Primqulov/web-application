@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api, Review, User } from "@/lib/api";
 import { Star, CheckCircle2 } from "lucide-react";
 import { T } from "@/components/T";
+import { Avatar } from "@/components/ui/Avatar";
 import { ScriptToggle } from "@/components/ScriptToggle";
 
 export default function PublicProfile() {
@@ -23,7 +24,7 @@ export default function PublicProfile() {
         <ScriptToggle />
       </div>
       <div className="card p-6 flex gap-4">
-        <div className="h-20 w-20 rounded-full bg-brand-navy text-white grid place-items-center text-2xl font-bold">{u.firstName?.[0]?.toUpperCase()}</div>
+        <Avatar name={`${u.firstName} ${u.lastName}`} src={u.avatarUrl || undefined} size="xl" />
         <div className="flex-1">
           <h1 className="text-xl font-bold">{u.firstName} {u.lastName} {u.isPhoneVerified && <CheckCircle2 size={16} className="inline text-success" />}</h1>
           <div className="text-sm text-[color:var(--text-muted)] mt-1">

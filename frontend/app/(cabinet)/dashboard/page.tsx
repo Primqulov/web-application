@@ -100,7 +100,7 @@ function JobCard({ e }: { e: Elon }) {
     <>
     <Link href={`/elon/${e.id}`} className="card p-5 block transition hover:-translate-y-0.5 hover:shadow-pop animate-fade-in">
       <div className="flex items-start gap-3">
-        <Avatar name={e.ownerName} size="md" />
+        <Avatar name={e.ownerName} src={e.ownerAvatarUrl} size="md" />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-semibold heading leading-tight line-clamp-1"><T>{e.title}</T></h3>
