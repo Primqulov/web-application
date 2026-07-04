@@ -129,6 +129,38 @@ jobs:
               echo "OGOHLANTIRISH: MONGO_URI secret o'rnatilmagan -> serverdagi mavjud .env qiymati saqlanadi."
             fi
 
+            # ── Qolgan ilova secretlarini .env ga yozish ──────────────────────
+            # JWT/BOT_SHARED_SECRET/ADMIN_SEED_PASS/AWS kalitlari ilgari faqat
+            # serverdagi .env da qo'lda turardi. Endi ular ham GitHub secretlardan
+            # boshqariladi: .env to'liq qayta tiklanadi va rotatsiya = secretni
+            # yangilab qayta deploy qilish. MONGO/Telegram mantiqiga TEGILMAGAN.
+            #
+            # set_env_if_set: secret BO'SH BO'LMAGANDAGINA .env ga yozadi. Bo'sh
+            # bo'lsa serverdagi MAVJUD qiymatni saqlaydi (bo'sh qiymat bilan qayta
+            # yozib, kalitni yo'q qilib qo'ymaydi). Faqat kalit NOMINI chop etadi
+            # — qiymatlar hech qachon log'ga chiqmaydi (ular GitHub tomonidan ham
+            # avtomatik maskalanadi). Bu yordamchi mavjud set_env() ustiga quriladi.
+            set_env_if_set() {
+              key="$1"; value="$2"
+              if [ -n "$value" ]; then
+                set_env "$key" "$value"
+                echo "  $key: yangilandi"
+              else
+                echo "  $key: secret bo'sh -> serverdagi mavjud .env qiymati saqlandi"
+              fi
+            }
+
+            echo "==> Ilova secretlarini .env ga yozish (bo'shlari o'tkazib yuboriladi)"
+            # Har bir qiymat single-quote ichida uzatiladi (shell kengaytirishidan
+            # himoya) va faqat set_env_if_set orqali yoziladi -> qiymat log'ga
+            # chiqmaydi va bo'sh secret mavjud qiymatni buzmaydi.
+            set_env_if_set JWT_ACCESS_SECRET     '${{ secrets.JWT_ACCESS_SECRET }}'
+            set_env_if_set JWT_REFRESH_SECRET    '${{ secrets.JWT_REFRESH_SECRET }}'
+            set_env_if_set BOT_SHARED_SECRET     '${{ secrets.BOT_SHARED_SECRET }}'
+            set_env_if_set ADMIN_SEED_PASS       '${{ secrets.ADMIN_SEED_PASS }}'
+            set_env_if_set AWS_ACCESS_KEY_ID     '${{ secrets.AWS_ACCESS_KEY_ID }}'
+            set_env_if_set AWS_SECRET_ACCESS_KEY '${{ secrets.AWS_SECRET_ACCESS_KEY }}'
+
             echo "==> Server resurslari (debug: build yiqilsa sabab shu yerda ko'rinadi)"
             free -h || true
             df -h / || true
