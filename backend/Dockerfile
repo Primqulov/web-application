@@ -7,11 +7,13 @@ COPY . .
 RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -o /out/api ./cmd/api
 RUN CGO_ENABLED=0 GOOS=linux go build -o /out/seed ./seed
+RUN CGO_ENABLED=0 GOOS=linux go build -o /out/resetadmin ./cmd/resetadmin
 
 FROM alpine:3.19
 RUN apk add --no-cache ca-certificates && mkdir -p /data/avatars
 WORKDIR /app
 COPY --from=build /out/api /app/api
 COPY --from=build /out/seed /app/seed
+COPY --from=build /out/resetadmin /app/resetadmin
 EXPOSE 8080
 ENTRYPOINT ["/app/api"]
