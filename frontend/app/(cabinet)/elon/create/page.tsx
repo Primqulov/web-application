@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { api, Category, Elon, User } from "@/lib/api";
+import { api, Category, Elon, User, Gender, GENDER_LABEL, GENDER_OPTIONS } from "@/lib/api";
 import { Shell } from "@/components/Shell";
 import { MultiImageUploader } from "@/components/ui/ImageUpload";
 import { MapPicker, LatLng } from "@/components/ui/MapPicker";
@@ -16,6 +16,7 @@ type Form = {
   description: string;
   loc: LatLng | null;
   workersNeeded: number | "";
+  gender: Gender;
   pricingType: "per_worker" | "total";
   priceAmount: number | "";
   startDate: string;
@@ -53,6 +54,7 @@ export default function CreateElon() {
     description: "",
     loc: null,
     workersNeeded: 1,
+    gender: "mixed",
     pricingType: "per_worker",
     priceAmount: "",
     startDate: MIN_DATE,
@@ -86,6 +88,7 @@ export default function CreateElon() {
         lat: form.loc?.lat || 0,
         lng: form.loc?.lng || 0,
         workersNeeded: workers,
+        gender: form.gender,
         pricingType: price === 0 ? "negotiable" : form.pricingType,
         priceAmount: price,
         startDate: form.startDate,
@@ -178,6 +181,19 @@ export default function CreateElon() {
             onBlur={() => { if (form.workersNeeded === "" ) setForm((f) => ({ ...f, workersNeeded: 1 })); }}
             placeholder={t("Masalan, 3")}
           />
+        </Field>
+
+        <Field label="Kimlar kerak *">
+          <div className="flex flex-wrap gap-2">
+            {GENDER_OPTIONS.map((g) => (
+              <button key={g} type="button"
+                onClick={() => setForm({ ...form, gender: g })}
+                className={`chip ${form.gender === g ? "chip-active" : ""}`}>
+                <T>{GENDER_LABEL[g]}</T>
+              </button>
+            ))}
+          </div>
+          <div className="mt-1 text-xs muted"><T>Ishga erkaklar, ayollar yoki aralash kerakligini tanlang.</T></div>
         </Field>
 
         <Field label="Taklif qilinayotgan narx">

@@ -104,6 +104,9 @@ type Elon struct {
 	WorkTimeFrom   string             `bson:"workTimeFrom,omitempty" json:"workTimeFrom"`
 	WorkTimeTo     string             `bson:"workTimeTo,omitempty" json:"workTimeTo"`
 	ContactPhone   string             `bson:"contactPhone,omitempty" json:"contactPhone"`
+	// Ishga kimlar kerak: male (erkaklar) | female (ayollar) | mixed (aralash).
+	// Bo'sh/eski e'lonlar "aralash" deb hisoblanadi (feed filtriga qarang).
+	Gender         string             `bson:"gender,omitempty" json:"gender"`
 	Status         string             `bson:"status" json:"status"` // draft|recruiting|filled|in_progress|completed|cancelled
 	AcceptedCount  int                `bson:"acceptedCount" json:"acceptedCount"`
 	ViewsCount     int                `bson:"viewsCount" json:"viewsCount"`

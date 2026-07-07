@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { api, Category, Elon } from "@/lib/api";
+import { api, Category, Elon, GENDER_LABEL, GENDER_OPTIONS } from "@/lib/api";
 import { Shell } from "@/components/Shell";
 import { MapPicker, LatLng } from "@/components/ui/MapPicker";
 import { T, useT } from "@/components/T";
@@ -33,7 +33,7 @@ export default function EditElon() {
       lat: loc?.lat || 0, lng: loc?.lng || 0,
       // Koordinata bo'lmasa eski viloyat/tumanni saqlab qolamiz.
       region: e!.region, district: e!.district,
-      workersNeeded: e!.workersNeeded, pricingType: e!.pricingType,
+      workersNeeded: e!.workersNeeded, gender: e!.gender || "mixed", pricingType: e!.pricingType,
       priceAmount: price,
       startDate: e!.startDate, workTimeFrom: e!.workTimeFrom, workTimeTo: e!.workTimeTo,
       contactPhone: e!.contactPhone ? fmtPhone(e!.contactPhone) : "",
@@ -73,6 +73,19 @@ export default function EditElon() {
                 setE(e.pricingType === "total" ? { ...e, priceAmount: n } : { ...e, perWorkerAmount: n });
               }} />
           </label>
+        </div>
+
+        <div className="block">
+          <span className="text-sm font-medium"><T>Kimlar kerak</T></span>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {GENDER_OPTIONS.map((g) => (
+              <button key={g} type="button"
+                onClick={() => setE({ ...e!, gender: g })}
+                className={`chip ${(e!.gender || "mixed") === g ? "chip-active" : ""}`}>
+                <T>{GENDER_LABEL[g]}</T>
+              </button>
+            ))}
+          </div>
         </div>
 
         <label className="block">

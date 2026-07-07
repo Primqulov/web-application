@@ -59,7 +59,21 @@ type upsertReq struct {
 	WorkTimeFrom  string   `json:"workTimeFrom"`
 	WorkTimeTo    string   `json:"workTimeTo"`
 	ContactPhone  string   `json:"contactPhone"`
+	Gender        string   `json:"gender"` // male|female|mixed (bo'sh => mixed)
 	Images        []string `json:"images"`
+}
+
+// normalizeGender e'lon jinsini kanonik qiymatga keltiradi. Noma'lum yoki bo'sh
+// qiymat "mixed" (aralash) bo'ladi — ya'ni standart holatda ish hammaga ochiq.
+func normalizeGender(s string) string {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "male":
+		return "male"
+	case "female":
+		return "female"
+	default:
+		return "mixed"
+	}
 }
 
 func (req *upsertReq) computePrice() (pType string, total int64, perWorker int64) {
@@ -142,6 +156,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		WorkTimeFrom:    req.WorkTimeFrom,
 		WorkTimeTo:      req.WorkTimeTo,
 		ContactPhone:    req.ContactPhone,
+		Gender:          normalizeGender(req.Gender),
 		Status:          "recruiting",
 		PublishedAt:     &now,
 		CreatedAt:       now,
@@ -239,6 +254,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		"workTimeFrom":    req.WorkTimeFrom,
 		"workTimeTo":      req.WorkTimeTo,
 		"contactPhone":    req.ContactPhone,
+		"gender":          normalizeGender(req.Gender),
 		"updatedAt":       time.Now(),
 	}
 	if req.Images != nil {
@@ -298,6 +314,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Feed(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	cat := strings.TrimSpace(r.URL.Query().Get("categoryId"))
+	gender := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("gender")))
 	region := strings.TrimSpace(r.URL.Query().Get("region"))
 	minPrice, _ := strconv.ParseInt(r.URL.Query().Get("minPrice"), 10, 64)
 	maxPrice, _ := strconv.ParseInt(r.URL.Query().Get("maxPrice"), 10, 64)
@@ -323,6 +340,16 @@ func (h *Handler) Feed(w http.ResponseWriter, r *http.Request) {
 		if cid, err := primitive.ObjectIDFromHex(cat); err == nil {
 			filter["categoryId"] = cid
 		}
+	}
+	// Jins bo'yicha filtr. "aralash" eski/bo'sh (gender saqlanmagan) e'lonlarni
+	// ham qamrab oladi — ular hech kimga tegishli emas deb yo'qolib qolmasin.
+	switch gender {
+	case "male":
+		filter["gender"] = "male"
+	case "female":
+		filter["gender"] = "female"
+	case "mixed":
+		filter["gender"] = bson.M{"$in": bson.A{"mixed", "", nil}}
 	}
 	// Joylashuv (viloyat) bo'yicha filtr.
 	if region != "" {

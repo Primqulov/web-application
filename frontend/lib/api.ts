@@ -148,6 +148,16 @@ export interface Category {
   usageCount: number;
   createdAt?: string;
 }
+// Ish e'loni kimlar uchun: erkaklar / ayollar / aralash.
+export type Gender = "male" | "female" | "mixed";
+export const GENDER_LABEL: Record<Gender, string> = {
+  male: "Erkaklar",
+  female: "Ayollar",
+  mixed: "Aralash",
+};
+// Feed filtri va formalar uchun tartib (aralash — standart).
+export const GENDER_OPTIONS: Gender[] = ["male", "female", "mixed"];
+
 export interface Elon {
   id: ID;
   ownerId: ID;
@@ -169,6 +179,7 @@ export interface Elon {
   workTimeFrom?: string;
   workTimeTo?: string;
   contactPhone?: string;
+  gender?: Gender;
   status: "draft" | "recruiting" | "filled" | "in_progress" | "completed" | "cancelled" | "hidden";
   acceptedCount: number;
   publishedAt?: string;

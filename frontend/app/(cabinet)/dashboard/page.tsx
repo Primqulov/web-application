@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Star, MapPin, Clock, Share2, ArrowUpRight, Briefcase, SlidersHorizontal, X } from "lucide-react";
-import { api, Category, Elon } from "@/lib/api";
+import { api, Category, Elon, GENDER_LABEL, GENDER_OPTIONS } from "@/lib/api";
 import { Shell, ShellSearch } from "@/components/Shell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CardSkeleton } from "@/components/ui/Skeleton";
@@ -18,6 +18,7 @@ export default function Dashboard() {
   const t = useT();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("");
+  const [gender, setGender] = useState<string>(""); // "" = barchasi
   const [sort, setSort] = useState<string>("time");
   const [region, setRegion] = useState<string>("");
   const [minPrice, setMinPrice] = useState<string>("");
@@ -32,11 +33,12 @@ export default function Dashboard() {
     queryFn: () => api.get<Category[]>("/api/categories"),
   });
   const { data, isLoading } = useQuery<{ items: Elon[] }>({
-    queryKey: ["feed", q, cat, sort, region, minPrice, maxPrice],
+    queryKey: ["feed", q, cat, gender, sort, region, minPrice, maxPrice],
     queryFn: () => {
       const p = new URLSearchParams();
       if (q) p.set("q", q);
       if (cat) p.set("categoryId", cat);
+      if (gender) p.set("gender", gender);
       if (sort) p.set("sort", sort);
       if (region) p.set("region", region);
       if (minPrice) p.set("minPrice", onlyDigits(minPrice));
@@ -60,6 +62,16 @@ export default function Dashboard() {
         {(cats || []).slice(0, 12).map((c) => (
           <Chip key={c.id} active={cat === c.id} onClick={() => setCat(c.id)}>
             {c.icon && <span>{c.icon}</span>}<T>{c.name}</T>
+          </Chip>
+        ))}
+      </div>
+
+      {/* Jins bo'yicha bo'limlar: ishchi o'ziga mos ishlarni tez topsin. */}
+      <div className="card p-3 flex items-center gap-2 overflow-x-auto scroll-y-auto">
+        <Chip active={gender === ""} onClick={() => setGender("")}><T>Hammasi</T></Chip>
+        {GENDER_OPTIONS.map((g) => (
+          <Chip key={g} active={gender === g} onClick={() => setGender(g)}>
+            <T>{GENDER_LABEL[g]}</T>
           </Chip>
         ))}
       </div>
@@ -191,6 +203,9 @@ function JobCard({ e }: { e: Elon }) {
           </span>
         )}
         <span className="badge-neutral"><T>{e.categoryName}</T></span>
+        {(e.gender === "male" || e.gender === "female") && (
+          <span className="badge-neutral"><T>{GENDER_LABEL[e.gender]}</T></span>
+        )}
       </div>
 
       <div className="mt-4 pt-3 border-t flex items-end justify-between" style={{ borderColor: "var(--border)" }}>

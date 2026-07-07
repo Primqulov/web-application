@@ -7,7 +7,7 @@ import {
   Info, Users, Calendar, MapPin, FileText, Wallet, ShieldCheck,
   Phone, Send, Share2, Image as ImageIcon, X,
 } from "lucide-react";
-import { api, Elon, getAccess } from "@/lib/api";
+import { api, Elon, getAccess, GENDER_LABEL } from "@/lib/api";
 import { Modal } from "@/components/Modal";
 import { ShareModal } from "@/components/ShareModal";
 import { MapView } from "@/components/ui/MapView";
@@ -109,6 +109,7 @@ export default function ElonDetails() {
           <div className="grid sm:grid-cols-2 gap-4">
             <KV icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><polygon points="12,2 22,20 2,20" /></svg>} label="KATEGORIYA" value={e.categoryName} />
             <KV icon={<Users size={18} />} label="ISHCHILAR SONI" value={`${e.workersNeeded} kishi`} />
+            <KV icon={<Users size={18} />} label="KIMLAR KERAK" value={GENDER_LABEL[e.gender || "mixed"]} />
             <KV icon={<Calendar size={18} />} label="SANA VA VAQT" value={dateLine} />
           </div>
         </section>
