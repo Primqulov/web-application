@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Star, MapPin, Clock, Share2 } from "lucide-react";
+import { MapPin, Clock, Share2 } from "lucide-react";
 import { Elon } from "@/lib/api";
 import { fmtSumSom, fromNow } from "@/lib/format";
 import { ShareModal } from "./ShareModal";
@@ -27,9 +27,6 @@ export function JobCard({ e }: { e: Elon }) {
       <div className="mt-1 flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
         <Avatar size="xs" name={e.ownerName} src={e.ownerAvatarUrl} />
         <span>{e.ownerName || "Foydalanuvchi"}</span>
-        <span>•</span>
-        <Star size={14} className="text-accent-amber" />
-        <span>{(e.ownerRating ?? 0).toFixed(1)}</span>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[color:var(--text-muted)]">
         {(e.region || e.locationText) && (<span className="inline-flex items-center gap-1"><MapPin size={14} /><T>{[e.region, e.district].filter(Boolean).join(", ") || e.locationText || ""}</T></span>)}
