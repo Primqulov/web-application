@@ -154,6 +154,10 @@ type Application struct {
 	Status                 string             `bson:"status" json:"status"` // pending|accepted|rejected|cancelled|completed
 	EmployerConfirmedDone  bool               `bson:"employerConfirmedDone" json:"employerConfirmedDone"`
 	WorkerConfirmedDone    bool               `bson:"workerConfirmedDone" json:"workerConfirmedDone"`
+	// AutoCompleted — ish ikki tomon tasdig'isiz, belgilangan vaqtdan 18 soat
+	// o'tgach avtomatik yakunlangan bo'lsa true. Tarix (arxiv) yozuvi qanday
+	// yopilganini ajratish uchun.
+	AutoCompleted          bool               `bson:"autoCompleted" json:"autoCompleted"`
 	CancelledBy            string             `bson:"cancelledBy,omitempty" json:"cancelledBy"`
 	CancelReason           string             `bson:"cancelReason,omitempty" json:"cancelReason,omitempty"`
 	AppliedAt              time.Time          `bson:"appliedAt" json:"appliedAt"`

@@ -446,13 +446,18 @@ func (h *Handler) ConfirmDone(w http.ResponseWriter, r *http.Request) {
 	}
 	if app.EmployerConfirmedDone && app.WorkerConfirmedDone {
 		now := time.Now()
-		_, _ = h.Apps.UpdateOne(r.Context(), bson.M{"_id": appID}, bson.M{"$set": bson.M{"status": "completed", "completedAt": now}})
-		// bump completedJobsCount on both users
-		_, _ = h.Users.UpdateOne(r.Context(), bson.M{"_id": app.WorkerID}, bson.M{"$inc": bson.M{"completedJobsCount": 1}})
-		_, _ = h.Users.UpdateOne(r.Context(), bson.M{"_id": app.EmployerID}, bson.M{"$inc": bson.M{"completedJobsCount": 1}})
-		// notify both
-		h.Notify.Push(r.Context(), app.WorkerID, "job_completed", "Ish yakunlandi", app.ElonTitle, &models.RelatedEntity{Type: "application", ID: appID})
-		h.Notify.Push(r.Context(), app.EmployerID, "job_completed", "Ish yakunlandi", app.ElonTitle, &models.RelatedEntity{Type: "application", ID: appID})
+		// Shartli yangilash: faqat hali "accepted" bo'lsa yakunlaymiz. Avtomatik
+		// yakunlash scheduleri ayni paytda shu arizani yopib qo'ygan bo'lsa,
+		// ModifiedCount 0 bo'ladi va sanoqni ikki marta oshirmaymiz.
+		res, uerr := h.Apps.UpdateOne(r.Context(), bson.M{"_id": appID, "status": "accepted"}, bson.M{"$set": bson.M{"status": "completed", "completedAt": now}})
+		if uerr == nil && res.ModifiedCount == 1 {
+			// bump completedJobsCount on both users
+			_, _ = h.Users.UpdateOne(r.Context(), bson.M{"_id": app.WorkerID}, bson.M{"$inc": bson.M{"completedJobsCount": 1}})
+			_, _ = h.Users.UpdateOne(r.Context(), bson.M{"_id": app.EmployerID}, bson.M{"$inc": bson.M{"completedJobsCount": 1}})
+			// notify both
+			h.Notify.Push(r.Context(), app.WorkerID, "job_completed", "Ish yakunlandi", app.ElonTitle, &models.RelatedEntity{Type: "application", ID: appID})
+			h.Notify.Push(r.Context(), app.EmployerID, "job_completed", "Ish yakunlandi", app.ElonTitle, &models.RelatedEntity{Type: "application", ID: appID})
+		}
 		httpx.JSON(w, 200, map[string]string{"status": "completed"})
 		return
 	}

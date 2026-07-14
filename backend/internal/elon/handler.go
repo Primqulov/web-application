@@ -597,16 +597,16 @@ func validateStartDate(startDate string, now time.Time, allowPast bool) error {
 	return nil
 }
 
-// isExpired — e'lon belgilangan boshlanish vaqtidan `grace` dan ko'p o'tgan
-// bo'lsa true qaytaradi. Mantiq notExpiredExpr (feed) bilan bir xil: kun
-// startDate'dan, soat startDate ichidan (to'liq sana-vaqt bo'lsa), bo'lmasa
-// workTimeFrom'dan, u ham bo'lmasa kun oxiri (23:59) deb olinadi. Bo'sh yoki
-// noto'g'ri sana muddati o'tmagan deb hisoblanadi (e'lon tasodifan arxivga
-// tushib qolmasligi uchun).
-func isExpired(e models.Elon, now time.Time, grace time.Duration) bool {
+// ScheduledStart — e'lon belgilangan boshlanish vaqtini (instant) qaytaradi.
+// Kun startDate'dan, soat startDate ichidan (to'liq ISO sana-vaqt bo'lsa),
+// bo'lmasa workTimeFrom'dan, u ham bo'lmasa kun oxiri (23:59) deb olinadi;
+// naive vaqt Asia/Tashkent bo'yicha talqin qilinadi. Mantiq notExpiredExpr
+// (feed filtri) bilan bir xil. startDate bo'sh yoki noto'g'ri bo'lsa ok=false
+// qaytadi (belgilangan vaqt yo'q — chaqiruvchi shu holatni hisobga oladi).
+func ScheduledStart(e models.Elon) (time.Time, bool) {
 	s := strings.TrimSpace(e.StartDate)
 	if s == "" {
-		return false
+		return time.Time{}, false
 	}
 	datePart := s
 	if len(s) >= 10 {
@@ -625,6 +625,17 @@ func isExpired(e models.Elon, now time.Time, grace time.Duration) bool {
 	}
 	start, err := time.ParseInLocation("2006-01-02T15:04", datePart+"T"+timePart, uzTZ)
 	if err != nil {
+		return time.Time{}, false
+	}
+	return start, true
+}
+
+// isExpired — e'lon belgilangan boshlanish vaqtidan `grace` dan ko'p o'tgan
+// bo'lsa true qaytaradi. Bo'sh yoki noto'g'ri sana muddati o'tmagan deb
+// hisoblanadi (e'lon tasodifan arxivga tushib qolmasligi uchun).
+func isExpired(e models.Elon, now time.Time, grace time.Duration) bool {
+	start, ok := ScheduledStart(e)
+	if !ok {
 		return false
 	}
 	return start.Before(now.Add(-grace))

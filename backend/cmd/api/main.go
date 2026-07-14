@@ -97,6 +97,10 @@ func main() {
 	// Background scheduler: delivers due scheduled broadcasts (checks every
 	// minute). Stops when ctx is cancelled on shutdown.
 	go adminH.RunScheduler(ctx)
+	// Background scheduler: qabul qilingan ishlarni belgilangan vaqtdan 18 soat
+	// o'tgach (agar ikki tomon ham bekor qilmagan bo'lsa) avtomatik yakunlab,
+	// ish tarixiga (arxivga) o'tkazadi. ctx bekor qilinganda to'xtaydi.
+	go appH.RunAutoCompleteScheduler(ctx)
 
 	// Rate limiting keys off the real client IP. Only trust forwarding headers
 	// when explicitly configured to sit behind a trusted proxy; otherwise XFF is
