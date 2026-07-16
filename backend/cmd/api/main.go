@@ -131,6 +131,14 @@ func main() {
 	applyLimiter := httpx.NewLimiter(20, 0.5) // 20 burst, slow refill
 	loginLimiter := httpx.NewLimiter(8, 0.2)  // 8 burst, 1 / 5s — throttles credential brute-force
 
+	// Evict idle per-IP buckets so the limiter maps don't grow unbounded (each
+	// unique client IP would otherwise leave a permanent entry). The 15-min idle
+	// threshold is far above every bucket's full-refill time (<=40s), so eviction
+	// never grants a returning client extra allowance. Stops on ctx cancel.
+	otpLimiter.StartCleanup(ctx, 5*time.Minute, 15*time.Minute)
+	applyLimiter.StartCleanup(ctx, 5*time.Minute, 15*time.Minute)
+	loginLimiter.StartCleanup(ctx, 5*time.Minute, 15*time.Minute)
+
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) { httpx.JSON(w, 200, map[string]string{"status": "ok"}) })
 
 	// Serve locally-stored uploads (only when running without S3). Public, no
