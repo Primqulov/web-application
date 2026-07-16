@@ -70,7 +70,7 @@ func main() {
 		s3svc, err = storage.New(ctx, storage.Config{
 			Region: cfg.AWSRegion, AccessKeyID: cfg.AWSAccessKeyID,
 			SecretAccessKey: cfg.AWSSecretAccessKey,
-			Bucket: cfg.AWSS3Bucket, PublicBaseURL: cfg.AWSS3PublicBaseURL,
+			Bucket:          cfg.AWSS3Bucket, PublicBaseURL: cfg.AWSS3PublicBaseURL,
 		})
 		if err != nil {
 			log.Warn("s3 init", "err", err)
@@ -119,12 +119,14 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(httpx.Recover)
 	r.Use(httpx.SecurityHeaders)
+	// Auth is a Bearer token in the Authorization header (not cookies), so
+	// AllowCredentials is intentionally left off — the browser never needs to
+	// send cookies cross-origin here.
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   cfg.CORSOrigins,
-		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Authorization", "Content-Type"},
-		AllowCredentials: true,
-		MaxAge:           300,
+		AllowedOrigins: cfg.CORSOrigins,
+		AllowedMethods: []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Authorization", "Content-Type"},
+		MaxAge:         300,
 	}))
 
 	otpLimiter := httpx.NewLimiter(10, 0.5)   // 10 burst, 1 / 2s
