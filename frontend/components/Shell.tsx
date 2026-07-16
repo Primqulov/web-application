@@ -8,7 +8,7 @@ import {
   Settings, User as UserIcon, PlusCircle, LogOut, Bell as BellIcon,
   MessageSquareWarning, Menu, Search,
 } from "lucide-react";
-import { api, getAccess, Notification, setAccess, setRefresh, User } from "@/lib/api";
+import { api, getAccess, Notification, setAccess, User } from "@/lib/api";
 import { T, useT } from "@/components/T";
 import { ScriptToggle } from "@/components/ScriptToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -60,7 +60,7 @@ export function Shell({ title, search, children }: { title: string; search?: Rea
   }, [me, pathname, router]);
 
   function logout() {
-    setAccess(null); setRefresh(null);
+    setAccess(null);
     // Oldingi sessiyaning keshlangan ma'lumotlari (profil, bildirishnomalar,
     // ro'yxatlar) yangi/keyingi foydalanuvchida ko'rinib qolmasligi uchun.
     qc.clear();

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Send, ShieldCheck, Clock, MessageSquareText } from "lucide-react";
-import { api, setAccess, setRefresh, User } from "@/lib/api";
+import { api, setAccess, User } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { T, useT } from "@/components/T";
 import { ScriptToggle } from "@/components/ScriptToggle";
@@ -51,7 +51,9 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const v = await api.post<Verify>("/api/auth/otp/verify", { token: tgToken, code });
-      setAccess(v.accessToken); setRefresh(v.refreshToken);
+      // Faqat access token saqlanadi. Refresh token localStorage'da saqlanmaydi
+      // (web ilova refresh oqimini ishlatmaydi) — XSS hujum yuzasini kamaytiradi.
+      setAccess(v.accessToken);
       router.replace(v.user.onboardingCompleted ? "/dashboard" : "/onboarding");
     } catch (err: any) {
       setError(err?.message || t("Kod noto'g'ri yoki muddati o'tgan"));
