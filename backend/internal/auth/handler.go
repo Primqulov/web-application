@@ -62,9 +62,9 @@ type verifyReq struct {
 }
 
 type verifyResp struct {
-	AccessToken  string             `json:"accessToken"`
-	RefreshToken string             `json:"refreshToken"`
-	User         models.User        `json:"user"`
+	AccessToken  string      `json:"accessToken"`
+	RefreshToken string      `json:"refreshToken"`
+	User         models.User `json:"user"`
 }
 
 func (h *Handler) VerifyOTP(w http.ResponseWriter, r *http.Request) {

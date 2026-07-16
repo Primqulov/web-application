@@ -78,8 +78,8 @@ type app struct {
 	adminPhoneDigits string
 
 	mu       sync.Mutex
-	sessions map[int64]*session            // 1-bot chat holatlari
-	replyTo  map[int64]primitive.ObjectID  // 2-bot: admin chat -> javob berilayotgan murojaat
+	sessions map[int64]*session           // 1-bot chat holatlari
+	replyTo  map[int64]primitive.ObjectID // 2-bot: admin chat -> javob berilayotgan murojaat
 }
 
 func main() {

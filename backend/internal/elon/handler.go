@@ -41,11 +41,11 @@ func NewHandler(db *mongo.Database, s *storage.Service) *Handler {
 }
 
 type upsertReq struct {
-	Title         string   `json:"title" validate:"required"`
-	CategoryID    string   `json:"categoryId" validate:"required"`
-	Description   string   `json:"description" validate:"required"`
-	LocationURL   string   `json:"locationUrl"`
-	LocationText  string   `json:"locationText"`
+	Title        string `json:"title" validate:"required"`
+	CategoryID   string `json:"categoryId" validate:"required"`
+	Description  string `json:"description" validate:"required"`
+	LocationURL  string `json:"locationUrl"`
+	LocationText string `json:"locationText"`
 	// Ish joyi koordinatalari (xaritadan tanlanadi). Viloyat/tuman shulardan
 	// avtomatik aniqlanadi — ish beruvchi qo'lda kiritmaydi.
 	Lat           float64  `json:"lat"`
@@ -138,29 +138,29 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	// E'lon darhol chop etiladi — alohida "qoralama" bosqichi yo'q.
 	e := models.Elon{
-		OwnerID:         uid,
-		Title:           strings.TrimSpace(req.Title),
-		CategoryID:      catID,
-		CategoryName:    cat.Name,
-		Description:     req.Description,
-		LocationURL:     locationURL,
-		Lat:             req.Lat,
-		Lng:             req.Lng,
-		Region:          region,
-		District:        district,
-		WorkersNeeded:   req.WorkersNeeded,
-		PricingType:     pType,
-		PriceAmount:     total,
-		PerWorkerAmount: per,
-		StartDate:       req.StartDate,
-		WorkTimeFrom:    req.WorkTimeFrom,
-		WorkTimeTo:      req.WorkTimeTo,
-		ContactPhone:    req.ContactPhone,
-		Gender:          normalizeGender(req.Gender),
-		Status:          "recruiting",
-		PublishedAt:     &now,
-		CreatedAt:       now,
-		UpdatedAt:       now,
+		OwnerID:           uid,
+		Title:             strings.TrimSpace(req.Title),
+		CategoryID:        catID,
+		CategoryName:      cat.Name,
+		Description:       req.Description,
+		LocationURL:       locationURL,
+		Lat:               req.Lat,
+		Lng:               req.Lng,
+		Region:            region,
+		District:          district,
+		WorkersNeeded:     req.WorkersNeeded,
+		PricingType:       pType,
+		PriceAmount:       total,
+		PerWorkerAmount:   per,
+		StartDate:         req.StartDate,
+		WorkTimeFrom:      req.WorkTimeFrom,
+		WorkTimeTo:        req.WorkTimeTo,
+		ContactPhone:      req.ContactPhone,
+		Gender:            normalizeGender(req.Gender),
+		Status:            "recruiting",
+		PublishedAt:       &now,
+		CreatedAt:         now,
+		UpdatedAt:         now,
 		OwnerName:         strings.TrimSpace(owner.FirstName + " " + owner.LastName),
 		OwnerRating:       owner.Rating,
 		OwnerReviewsCount: owner.ReviewsCount,

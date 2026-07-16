@@ -38,11 +38,11 @@ func TestValidateStartDate(t *testing.T) {
 
 func TestComputePrice(t *testing.T) {
 	cases := []struct {
-		name             string
-		req              upsertReq
-		wantType         string
-		wantTotal        int64
-		wantPer          int64
+		name      string
+		req       upsertReq
+		wantType  string
+		wantTotal int64
+		wantPer   int64
 	}{
 		{"per_worker", upsertReq{PricingType: "per_worker", PriceAmount: 100000, WorkersNeeded: 3}, "per_worker", 300000, 100000},
 		{"total", upsertReq{PricingType: "total", PriceAmount: 600000, WorkersNeeded: 4}, "total", 600000, 150000},

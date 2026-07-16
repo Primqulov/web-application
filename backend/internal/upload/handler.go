@@ -34,8 +34,8 @@ var allowed = map[string]struct {
 	mimes    []string
 	maxBytes int64
 }{
-	"avatar":     {prefix: "avatars",      mimes: []string{"image/jpeg", "image/png", "image/webp"}, maxBytes: 5 << 20},
-	"elon":       {prefix: "elons",        mimes: []string{"image/jpeg", "image/png", "image/webp"}, maxBytes: 8 << 20},
+	"avatar": {prefix: "avatars", mimes: []string{"image/jpeg", "image/png", "image/webp"}, maxBytes: 5 << 20},
+	"elon":   {prefix: "elons", mimes: []string{"image/jpeg", "image/png", "image/webp"}, maxBytes: 8 << 20},
 }
 
 // POST /api/uploads?kind=avatar|elon   (multipart form, field: "file")

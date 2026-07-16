@@ -125,4 +125,3 @@ func (h *Handler) Resolve(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.JSON(w, 200, map[string]string{"status": req.Status})
 }
-
