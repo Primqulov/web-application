@@ -22,7 +22,6 @@ import (
 	"github.com/ishchibormi/backend/internal/feedback"
 	"github.com/ishchibormi/backend/internal/notification"
 	"github.com/ishchibormi/backend/internal/report"
-	"github.com/ishchibormi/backend/internal/review"
 	"github.com/ishchibormi/backend/internal/upload"
 	"github.com/ishchibormi/backend/internal/user"
 	"github.com/ishchibormi/backend/pkg/db"
@@ -48,9 +47,13 @@ func main() {
 	if err := db.EnsureIndexes(ctx, mdb); err != nil {
 		log.Warn("ensure indexes", "err", err)
 	}
-	// Eski e'lonlarga ish beruvchi avatarini bir marta to'ldiramiz (idempotent).
-	if err := db.BackfillElonOwnerAvatars(ctx, mdb); err != nil {
-		log.Warn("backfill owner avatars", "err", err)
+	// Bir martalik, versiyalangan migratsiyalar (schema_migrations' da qayd
+	// etiladi — har biri faqat bir marta ishlaydi, shuning uchun ma'lumot
+	// o'sgani sayin boot sekinlashmaydi). Yuqoridagi EnsureIndexes va quyidagi
+	// EnsureDefaults ataylab har boot'da ishlaydi (idempotent / biznes
+	// moslashtiruvi) va bu registrga kirmaydi.
+	if err := db.RunMigrations(ctx, mdb); err != nil {
+		log.Warn("run migrations", "err", err)
 	}
 	// Turkumlarni kanonik ro'yxatga moslashtiramiz (har deploy'da avtomatik):
 	// faqat 3 turkum faol qoladi, eskilari nofaol qilinadi. Ma'lumot o'chmaydi.
@@ -67,7 +70,7 @@ func main() {
 		s3svc, err = storage.New(ctx, storage.Config{
 			Region: cfg.AWSRegion, AccessKeyID: cfg.AWSAccessKeyID,
 			SecretAccessKey: cfg.AWSSecretAccessKey,
-			Bucket: cfg.AWSS3Bucket, PublicBaseURL: cfg.AWSS3PublicBaseURL,
+			Bucket:          cfg.AWSS3Bucket, PublicBaseURL: cfg.AWSS3PublicBaseURL,
 		})
 		if err != nil {
 			log.Warn("s3 init", "err", err)
@@ -91,7 +94,6 @@ func main() {
 	catH := category.NewHandler(mdb)
 	elonH := elon.NewHandler(mdb, s3svc)
 	appH := application.NewHandler(mdb, notif)
-	revH := review.NewHandler(mdb, notif)
 	repH := report.NewHandler(mdb)
 	fbH := feedback.NewHandler(mdb)
 	uploadH := upload.NewHandler(s3svc)
@@ -99,6 +101,10 @@ func main() {
 	// Background scheduler: delivers due scheduled broadcasts (checks every
 	// minute). Stops when ctx is cancelled on shutdown.
 	go adminH.RunScheduler(ctx)
+	// Background scheduler: qabul qilingan ishlarni belgilangan vaqtdan 18 soat
+	// o'tgach (agar ikki tomon ham bekor qilmagan bo'lsa) avtomatik yakunlab,
+	// ish tarixiga (arxivga) o'tkazadi. ctx bekor qilinganda to'xtaydi.
+	go appH.RunAutoCompleteScheduler(ctx)
 
 	// Rate limiting keys off the real client IP. Only trust forwarding headers
 	// when explicitly configured to sit behind a trusted proxy; otherwise XFF is
@@ -113,17 +119,27 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(httpx.Recover)
 	r.Use(httpx.SecurityHeaders)
+	// Auth is a Bearer token in the Authorization header (not cookies), so
+	// AllowCredentials is intentionally left off — the browser never needs to
+	// send cookies cross-origin here.
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   cfg.CORSOrigins,
-		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Authorization", "Content-Type"},
-		AllowCredentials: true,
-		MaxAge:           300,
+		AllowedOrigins: cfg.CORSOrigins,
+		AllowedMethods: []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Authorization", "Content-Type"},
+		MaxAge:         300,
 	}))
 
 	otpLimiter := httpx.NewLimiter(10, 0.5)   // 10 burst, 1 / 2s
 	applyLimiter := httpx.NewLimiter(20, 0.5) // 20 burst, slow refill
 	loginLimiter := httpx.NewLimiter(8, 0.2)  // 8 burst, 1 / 5s — throttles credential brute-force
+
+	// Evict idle per-IP buckets so the limiter maps don't grow unbounded (each
+	// unique client IP would otherwise leave a permanent entry). The 15-min idle
+	// threshold is far above every bucket's full-refill time (<=40s), so eviction
+	// never grants a returning client extra allowance. Stops on ctx cancel.
+	otpLimiter.StartCleanup(ctx, 5*time.Minute, 15*time.Minute)
+	applyLimiter.StartCleanup(ctx, 5*time.Minute, 15*time.Minute)
+	loginLimiter.StartCleanup(ctx, 5*time.Minute, 15*time.Minute)
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) { httpx.JSON(w, 200, map[string]string{"status": "ok"}) })
 
@@ -152,7 +168,6 @@ func main() {
 		r.Get("/users/{id}", userH.GetPublic)
 		r.Get("/users", userH.Search)
 		r.Get("/categories", catH.List)
-		r.Get("/users/{id}/reviews", revH.ListForUser)
 
 		// Auth-protected
 		r.Group(func(r chi.Router) {
@@ -180,7 +195,6 @@ func main() {
 			r.Post("/applications/{id}/reject", appH.Reject)
 			r.Post("/applications/{id}/cancel", appH.Cancel)
 			r.Post("/applications/{id}/confirm-done", appH.ConfirmDone)
-			r.Post("/applications/{id}/review", revH.Create)
 
 			r.Get("/my/applications", appH.MyApplications)
 			r.Get("/my/elons/applications", appH.MyElonsApplications)
@@ -209,11 +223,11 @@ func main() {
 			// Overview — read-only, any authenticated admin (incl. support).
 			r.Get("/dashboard", adminH.Dashboard)
 			r.Get("/stats", adminH.Stats)
-			r.Get("/audit", adminH.Audit)
 			r.Get("/categories", adminH.ListCategories)
 
 			// Current admin + own two-factor — any authenticated admin.
 			r.Get("/me", adminH.Me)
+			r.Post("/logout", adminH.Logout)
 			r.Post("/2fa/setup", adminH.Setup2FA)
 			r.Post("/2fa/enable", adminH.Enable2FA)
 			r.Post("/2fa/disable", adminH.Disable2FA)
@@ -221,6 +235,8 @@ func main() {
 			// Moderation — superadmin + moderator.
 			r.Group(func(r chi.Router) {
 				r.Use(httpx.RequireRole("moderator"))
+				// Audit log — superadmin + moderator only (support ko'rmaydi).
+				r.Get("/audit", adminH.Audit)
 				r.Get("/users", adminH.ListUsers)
 				r.Get("/users/{id}", adminH.GetUser)
 				r.Post("/users/{id}/block", adminH.BlockUser)
@@ -232,8 +248,6 @@ func main() {
 				r.Patch("/elons/{id}/status", adminH.SetElonStatus)
 				r.Get("/reports", adminH.ListReports)
 				r.Patch("/reports/{id}/resolve", repH.Resolve)
-				r.Get("/reviews", adminH.ListReviews)
-				r.Delete("/reviews/{id}", adminH.DeleteReview)
 				r.Get("/applications", adminH.ListApplications)
 				r.Get("/export/users.csv", adminH.ExportUsers)
 				r.Get("/export/elons.csv", adminH.ExportElons)

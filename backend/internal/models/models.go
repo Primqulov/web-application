@@ -8,53 +8,53 @@ import (
 
 // User -- platform user (both employer and worker)
 type User struct {
-	ID                  primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	TelegramID          int64              `bson:"telegramId,omitempty" json:"telegramId"`
-	Phone               string             `bson:"phone" json:"phone"`
-	FirstName           string             `bson:"firstName" json:"firstName"`
-	LastName            string             `bson:"lastName" json:"lastName"`
-	AvatarURL           string             `bson:"avatarUrl,omitempty" json:"avatarUrl"`
-	Region              string             `bson:"region,omitempty" json:"region"`
-	District            string             `bson:"district,omitempty" json:"district"`
-	Bio                 string             `bson:"bio,omitempty" json:"bio"`
-	Skills              []string           `bson:"skills,omitempty" json:"skills"`
-	Rating              float64            `bson:"rating" json:"rating"`
-	ReviewsCount        int                `bson:"reviewsCount" json:"reviewsCount"`
+	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	TelegramID   int64              `bson:"telegramId,omitempty" json:"telegramId"`
+	Phone        string             `bson:"phone" json:"phone"`
+	FirstName    string             `bson:"firstName" json:"firstName"`
+	LastName     string             `bson:"lastName" json:"lastName"`
+	AvatarURL    string             `bson:"avatarUrl,omitempty" json:"avatarUrl"`
+	Region       string             `bson:"region,omitempty" json:"region"`
+	District     string             `bson:"district,omitempty" json:"district"`
+	Bio          string             `bson:"bio,omitempty" json:"bio"`
+	Skills       []string           `bson:"skills,omitempty" json:"skills"`
+	Rating       float64            `bson:"rating" json:"rating"`
+	ReviewsCount int                `bson:"reviewsCount" json:"reviewsCount"`
 	// Ikki tomonlama reyting: ishchi sifatida va ish beruvchi sifatida alohida.
-	WorkerRating         float64           `bson:"workerRating" json:"workerRating"`
-	WorkerReviewsCount   int               `bson:"workerReviewsCount" json:"workerReviewsCount"`
-	EmployerRating       float64           `bson:"employerRating" json:"employerRating"`
-	EmployerReviewsCount int               `bson:"employerReviewsCount" json:"employerReviewsCount"`
-	CompletedJobsCount  int                `bson:"completedJobsCount" json:"completedJobsCount"`
-	IsPhoneVerified     bool               `bson:"isPhoneVerified" json:"isPhoneVerified"`
-	IsBlocked           bool               `bson:"isBlocked" json:"isBlocked"`
-	IsDeleted           bool               `bson:"isDeleted" json:"isDeleted"`
-	LangPref            string             `bson:"langPref" json:"langPref"`
-	ThemePref           string             `bson:"themePref" json:"themePref"`
-	BlockedUserIDs      []primitive.ObjectID `bson:"blockedUserIds,omitempty" json:"blockedUserIds"`
-	OnboardingCompleted bool               `bson:"onboardingCompleted" json:"onboardingCompleted"`
-	CreatedAt           time.Time          `bson:"createdAt" json:"createdAt"`
-	UpdatedAt           time.Time          `bson:"updatedAt" json:"updatedAt"`
+	WorkerRating         float64              `bson:"workerRating" json:"workerRating"`
+	WorkerReviewsCount   int                  `bson:"workerReviewsCount" json:"workerReviewsCount"`
+	EmployerRating       float64              `bson:"employerRating" json:"employerRating"`
+	EmployerReviewsCount int                  `bson:"employerReviewsCount" json:"employerReviewsCount"`
+	CompletedJobsCount   int                  `bson:"completedJobsCount" json:"completedJobsCount"`
+	IsPhoneVerified      bool                 `bson:"isPhoneVerified" json:"isPhoneVerified"`
+	IsBlocked            bool                 `bson:"isBlocked" json:"isBlocked"`
+	IsDeleted            bool                 `bson:"isDeleted" json:"isDeleted"`
+	LangPref             string               `bson:"langPref" json:"langPref"`
+	ThemePref            string               `bson:"themePref" json:"themePref"`
+	BlockedUserIDs       []primitive.ObjectID `bson:"blockedUserIds,omitempty" json:"blockedUserIds"`
+	OnboardingCompleted  bool                 `bson:"onboardingCompleted" json:"onboardingCompleted"`
+	CreatedAt            time.Time            `bson:"createdAt" json:"createdAt"`
+	UpdatedAt            time.Time            `bson:"updatedAt" json:"updatedAt"`
 }
 
 // PublicUser is a safe projection.
 type PublicUser struct {
-	ID                 primitive.ObjectID `json:"id"`
-	FirstName          string             `json:"firstName"`
-	LastName           string             `json:"lastName"`
-	AvatarURL          string             `json:"avatarUrl"`
-	Region             string             `json:"region"`
-	District           string             `json:"district"`
-	Bio                string             `json:"bio"`
-	Skills             []string           `json:"skills"`
-	Rating             float64            `json:"rating"`
-	ReviewsCount       int                `json:"reviewsCount"`
-	WorkerRating         float64          `json:"workerRating"`
-	WorkerReviewsCount   int              `json:"workerReviewsCount"`
-	EmployerRating       float64          `json:"employerRating"`
-	EmployerReviewsCount int              `json:"employerReviewsCount"`
-	CompletedJobsCount int                `json:"completedJobsCount"`
-	IsPhoneVerified    bool               `json:"isPhoneVerified"`
+	ID                   primitive.ObjectID `json:"id"`
+	FirstName            string             `json:"firstName"`
+	LastName             string             `json:"lastName"`
+	AvatarURL            string             `json:"avatarUrl"`
+	Region               string             `json:"region"`
+	District             string             `json:"district"`
+	Bio                  string             `json:"bio"`
+	Skills               []string           `json:"skills"`
+	Rating               float64            `json:"rating"`
+	ReviewsCount         int                `json:"reviewsCount"`
+	WorkerRating         float64            `json:"workerRating"`
+	WorkerReviewsCount   int                `json:"workerReviewsCount"`
+	EmployerRating       float64            `json:"employerRating"`
+	EmployerReviewsCount int                `json:"employerReviewsCount"`
+	CompletedJobsCount   int                `json:"completedJobsCount"`
+	IsPhoneVerified      bool               `json:"isPhoneVerified"`
 }
 
 func (u *User) Public() PublicUser {
@@ -83,37 +83,37 @@ type Category struct {
 
 // Elon (job listing)
 type Elon struct {
-	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	OwnerID        primitive.ObjectID `bson:"ownerId" json:"ownerId"`
-	Title          string             `bson:"title" json:"title"`
-	CategoryID     primitive.ObjectID `bson:"categoryId" json:"categoryId"`
-	CategoryName   string             `bson:"categoryName" json:"categoryName"`
-	Description    string             `bson:"description" json:"description"`
-	LocationURL    string             `bson:"locationUrl,omitempty" json:"locationUrl"`
-	LocationText   string             `bson:"locationText,omitempty" json:"locationText"`
+	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	OwnerID      primitive.ObjectID `bson:"ownerId" json:"ownerId"`
+	Title        string             `bson:"title" json:"title"`
+	CategoryID   primitive.ObjectID `bson:"categoryId" json:"categoryId"`
+	CategoryName string             `bson:"categoryName" json:"categoryName"`
+	Description  string             `bson:"description" json:"description"`
+	LocationURL  string             `bson:"locationUrl,omitempty" json:"locationUrl"`
+	LocationText string             `bson:"locationText,omitempty" json:"locationText"`
 	// Aniq ish joyi koordinatalari (xaritadan tanlanadi).
-	Lat            float64            `bson:"lat,omitempty" json:"lat"`
-	Lng            float64            `bson:"lng,omitempty" json:"lng"`
-	Region         string             `bson:"region,omitempty" json:"region"`
-	District       string             `bson:"district,omitempty" json:"district"`
-	WorkersNeeded  int                `bson:"workersNeeded" json:"workersNeeded"`
-	PricingType    string             `bson:"pricingType" json:"pricingType"` // per_worker|total|negotiable
-	PriceAmount    int64              `bson:"priceAmount" json:"priceAmount"`
-	PerWorkerAmount int64             `bson:"perWorkerAmount" json:"perWorkerAmount"`
-	StartDate      string             `bson:"startDate,omitempty" json:"startDate"`
-	WorkTimeFrom   string             `bson:"workTimeFrom,omitempty" json:"workTimeFrom"`
-	WorkTimeTo     string             `bson:"workTimeTo,omitempty" json:"workTimeTo"`
-	ContactPhone   string             `bson:"contactPhone,omitempty" json:"contactPhone"`
+	Lat             float64 `bson:"lat,omitempty" json:"lat"`
+	Lng             float64 `bson:"lng,omitempty" json:"lng"`
+	Region          string  `bson:"region,omitempty" json:"region"`
+	District        string  `bson:"district,omitempty" json:"district"`
+	WorkersNeeded   int     `bson:"workersNeeded" json:"workersNeeded"`
+	PricingType     string  `bson:"pricingType" json:"pricingType"` // per_worker|total|negotiable
+	PriceAmount     int64   `bson:"priceAmount" json:"priceAmount"`
+	PerWorkerAmount int64   `bson:"perWorkerAmount" json:"perWorkerAmount"`
+	StartDate       string  `bson:"startDate,omitempty" json:"startDate"`
+	WorkTimeFrom    string  `bson:"workTimeFrom,omitempty" json:"workTimeFrom"`
+	WorkTimeTo      string  `bson:"workTimeTo,omitempty" json:"workTimeTo"`
+	ContactPhone    string  `bson:"contactPhone,omitempty" json:"contactPhone"`
 	// Ishga kimlar kerak: male (erkaklar) | female (ayollar) | mixed (aralash).
 	// Bo'sh/eski e'lonlar "aralash" deb hisoblanadi (feed filtriga qarang).
-	Gender         string             `bson:"gender,omitempty" json:"gender"`
-	Status         string             `bson:"status" json:"status"` // draft|recruiting|filled|in_progress|completed|cancelled
-	AcceptedCount  int                `bson:"acceptedCount" json:"acceptedCount"`
-	ViewsCount     int                `bson:"viewsCount" json:"viewsCount"`
-	IsDeleted      bool               `bson:"isDeleted" json:"isDeleted"`
-	PublishedAt    *time.Time         `bson:"publishedAt,omitempty" json:"publishedAt,omitempty"`
-	CreatedAt      time.Time          `bson:"createdAt" json:"createdAt"`
-	UpdatedAt      time.Time          `bson:"updatedAt" json:"updatedAt"`
+	Gender        string     `bson:"gender,omitempty" json:"gender"`
+	Status        string     `bson:"status" json:"status"` // draft|recruiting|filled|in_progress|completed|cancelled
+	AcceptedCount int        `bson:"acceptedCount" json:"acceptedCount"`
+	ViewsCount    int        `bson:"viewsCount" json:"viewsCount"`
+	IsDeleted     bool       `bson:"isDeleted" json:"isDeleted"`
+	PublishedAt   *time.Time `bson:"publishedAt,omitempty" json:"publishedAt,omitempty"`
+	CreatedAt     time.Time  `bson:"createdAt" json:"createdAt"`
+	UpdatedAt     time.Time  `bson:"updatedAt" json:"updatedAt"`
 	// Denormalized owner info for fast feed
 	OwnerName         string  `bson:"ownerName,omitempty" json:"ownerName"`
 	OwnerRating       float64 `bson:"ownerRating,omitempty" json:"ownerRating"`
@@ -125,16 +125,16 @@ type Elon struct {
 
 // Application
 type Application struct {
-	ID                     primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	ElonID                 primitive.ObjectID `bson:"elonId" json:"elonId"`
-	ElonTitle              string             `bson:"elonTitle" json:"elonTitle"`
-	WorkerID               primitive.ObjectID `bson:"workerId" json:"workerId"`
-	EmployerID             primitive.ObjectID `bson:"employerId" json:"employerId"`
-	WorkerPhone            string             `bson:"workerPhone" json:"workerPhone"`
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	ElonID      primitive.ObjectID `bson:"elonId" json:"elonId"`
+	ElonTitle   string             `bson:"elonTitle" json:"elonTitle"`
+	WorkerID    primitive.ObjectID `bson:"workerId" json:"workerId"`
+	EmployerID  primitive.ObjectID `bson:"employerId" json:"employerId"`
+	WorkerPhone string             `bson:"workerPhone" json:"workerPhone"`
 	// Ushbu ariza bilan nechta kishi ishga kelmoqchi (guruh bo'lib ariza).
 	// Kamida 1. Ish beruvchi qabul qilganda e'lonning acceptedCount shu songa
 	// oshadi.
-	PeopleCount            int                `bson:"peopleCount" json:"peopleCount"`
+	PeopleCount int `bson:"peopleCount" json:"peopleCount"`
 	// Denormalized worker snapshot (ariza tushgan paytdagi holat) — ish beruvchi
 	// nomzodlar ro'yxatini ko'rsatishi uchun.
 	WorkerName         string  `bson:"workerName,omitempty" json:"workerName"`
@@ -143,47 +143,39 @@ type Application struct {
 	WorkerAvatarURL    string  `bson:"workerAvatarUrl,omitempty" json:"workerAvatarUrl"`
 	WorkerVerified     bool    `bson:"workerVerified,omitempty" json:"workerVerified"`
 	// Denormalized elon snapshot — ishchi o'z arizalari ro'yxatini ko'rsatishi uchun.
-	ElonCategoryName string  `bson:"elonCategoryName,omitempty" json:"elonCategoryName"`
-	ElonRegion       string  `bson:"elonRegion,omitempty" json:"elonRegion"`
-	ElonDistrict     string  `bson:"elonDistrict,omitempty" json:"elonDistrict"`
-	OwnerName        string  `bson:"ownerName,omitempty" json:"ownerName"`
-	OwnerRating      float64 `bson:"ownerRating,omitempty" json:"ownerRating"`
-	OwnerAvatarURL   string  `bson:"ownerAvatarUrl,omitempty" json:"ownerAvatarUrl"`
-	Amount                 int64              `bson:"amount" json:"amount"`
-	IsNegotiable           bool               `bson:"isNegotiable" json:"isNegotiable"`
-	Status                 string             `bson:"status" json:"status"` // pending|accepted|rejected|cancelled|completed
-	EmployerConfirmedDone  bool               `bson:"employerConfirmedDone" json:"employerConfirmedDone"`
-	WorkerConfirmedDone    bool               `bson:"workerConfirmedDone" json:"workerConfirmedDone"`
-	CancelledBy            string             `bson:"cancelledBy,omitempty" json:"cancelledBy"`
-	CancelReason           string             `bson:"cancelReason,omitempty" json:"cancelReason,omitempty"`
-	AppliedAt              time.Time          `bson:"appliedAt" json:"appliedAt"`
-	DecidedAt              *time.Time         `bson:"decidedAt,omitempty" json:"decidedAt,omitempty"`
-	CompletedAt            *time.Time         `bson:"completedAt,omitempty" json:"completedAt,omitempty"`
+	ElonCategoryName      string  `bson:"elonCategoryName,omitempty" json:"elonCategoryName"`
+	ElonRegion            string  `bson:"elonRegion,omitempty" json:"elonRegion"`
+	ElonDistrict          string  `bson:"elonDistrict,omitempty" json:"elonDistrict"`
+	OwnerName             string  `bson:"ownerName,omitempty" json:"ownerName"`
+	OwnerRating           float64 `bson:"ownerRating,omitempty" json:"ownerRating"`
+	OwnerAvatarURL        string  `bson:"ownerAvatarUrl,omitempty" json:"ownerAvatarUrl"`
+	Amount                int64   `bson:"amount" json:"amount"`
+	IsNegotiable          bool    `bson:"isNegotiable" json:"isNegotiable"`
+	Status                string  `bson:"status" json:"status"` // pending|accepted|rejected|cancelled|completed
+	EmployerConfirmedDone bool    `bson:"employerConfirmedDone" json:"employerConfirmedDone"`
+	WorkerConfirmedDone   bool    `bson:"workerConfirmedDone" json:"workerConfirmedDone"`
+	// AutoCompleted — ish ikki tomon tasdig'isiz, belgilangan vaqtdan 18 soat
+	// o'tgach avtomatik yakunlangan bo'lsa true. Tarix (arxiv) yozuvi qanday
+	// yopilganini ajratish uchun.
+	AutoCompleted bool       `bson:"autoCompleted" json:"autoCompleted"`
+	CancelledBy   string     `bson:"cancelledBy,omitempty" json:"cancelledBy"`
+	CancelReason  string     `bson:"cancelReason,omitempty" json:"cancelReason,omitempty"`
+	AppliedAt     time.Time  `bson:"appliedAt" json:"appliedAt"`
+	DecidedAt     *time.Time `bson:"decidedAt,omitempty" json:"decidedAt,omitempty"`
+	CompletedAt   *time.Time `bson:"completedAt,omitempty" json:"completedAt,omitempty"`
 }
 
 // Review
-type Review struct {
-	ID            primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	ApplicationID primitive.ObjectID `bson:"applicationId" json:"applicationId"`
-	ElonID        primitive.ObjectID `bson:"elonId" json:"elonId"`
-	FromUserID    primitive.ObjectID `bson:"fromUserId" json:"fromUserId"`
-	ToUserID      primitive.ObjectID `bson:"toUserId" json:"toUserId"`
-	Direction     string             `bson:"direction" json:"direction"`
-	Rating        int                `bson:"rating" json:"rating"`
-	Comment       string             `bson:"comment,omitempty" json:"comment"`
-	CreatedAt     time.Time          `bson:"createdAt" json:"createdAt"`
-}
-
 // Notification
 type Notification struct {
-	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	UserID         primitive.ObjectID `bson:"userId" json:"userId"`
-	Type           string             `bson:"type" json:"type"`
-	Title          string             `bson:"title" json:"title"`
-	Body           string             `bson:"body" json:"body"`
-	RelatedEntity  *RelatedEntity     `bson:"relatedEntity,omitempty" json:"relatedEntity,omitempty"`
-	IsRead         bool               `bson:"isRead" json:"isRead"`
-	CreatedAt      time.Time          `bson:"createdAt" json:"createdAt"`
+	ID            primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	UserID        primitive.ObjectID `bson:"userId" json:"userId"`
+	Type          string             `bson:"type" json:"type"`
+	Title         string             `bson:"title" json:"title"`
+	Body          string             `bson:"body" json:"body"`
+	RelatedEntity *RelatedEntity     `bson:"relatedEntity,omitempty" json:"relatedEntity,omitempty"`
+	IsRead        bool               `bson:"isRead" json:"isRead"`
+	CreatedAt     time.Time          `bson:"createdAt" json:"createdAt"`
 }
 type RelatedEntity struct {
 	Type string             `bson:"type" json:"type"`
@@ -223,6 +215,7 @@ type Feedback struct {
 type Admin struct {
 	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Username     string             `bson:"username" json:"username"`
+	Name         string             `bson:"name,omitempty" json:"name"`
 	PasswordHash string             `bson:"passwordHash" json:"-"`
 	Role         string             `bson:"role" json:"role"`
 	IsActive     bool               `bson:"isActive" json:"isActive"`

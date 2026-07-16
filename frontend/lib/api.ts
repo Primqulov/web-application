@@ -4,8 +4,13 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:80
 export const WS_BASE = process.env.NEXT_PUBLIC_WS_BASE || "ws://localhost:8080";
 
 const ACCESS_KEY = "ib-access";
-const REFRESH_KEY = "ib-refresh";
 const ADMIN_KEY = "ib-admin";
+// Legacy key: the refresh token used to be persisted here. The web app never
+// calls the refresh endpoint — the access token TTL alone defines the session —
+// so a long-lived refresh token sitting in localStorage was pure XSS attack
+// surface (one XSS meant weeks of account access). We no longer store it and
+// actively purge any leftover value from existing users' browsers via setAccess.
+const LEGACY_REFRESH_KEY = "ib-refresh";
 
 export function getAccess(): string | null {
   if (typeof window === "undefined") return null;
@@ -15,15 +20,9 @@ export function setAccess(t: string | null) {
   if (typeof window === "undefined") return;
   if (t) localStorage.setItem(ACCESS_KEY, t);
   else localStorage.removeItem(ACCESS_KEY);
-}
-export function setRefresh(t: string | null) {
-  if (typeof window === "undefined") return;
-  if (t) localStorage.setItem(REFRESH_KEY, t);
-  else localStorage.removeItem(REFRESH_KEY);
-}
-export function getRefresh(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(REFRESH_KEY);
+  // Whenever the user's auth state changes (login, logout, 401), drop any
+  // legacy refresh token that may still be stored from an older build.
+  localStorage.removeItem(LEGACY_REFRESH_KEY);
 }
 
 export function setAdminToken(t: string | null) {
@@ -83,16 +82,37 @@ async function request<T>(
     if (t) headers["Authorization"] = `Bearer ${t}`;
   }
   Object.assign(headers, opts.headers || {});
-  const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
+
+  // fetch() server topilmaganda (backend o'chiq, CORS, oflayn) xom
+  // `TypeError: Failed to fetch` tashlaydi — bu Next.js dev'da "Unhandled
+  // Runtime Error" overlay'i bo'lib chiqadi. Uni typed APIError ga o'giramiz,
+  // shunda chaqiruvchilar tushunarli xabar ko'rsatadi.
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
+  } catch {
+    const err: APIError = {
+      code: "network",
+      message: "Serverga ulanib bo'lmadi. Internet aloqangizni yoki server ishlayotganini tekshiring.",
+    };
+    throw err;
+  }
+
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  // Javob JSON bo'lmasligi mumkin (masalan proksi 502 HTML sahifasi) — parse
+  // xatosi butun so'rovni yiqitmasin.
+  let data: any = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
   if (!res.ok) {
     // Sessiya tugagan yoki token yaroqsiz (401) — saqlangan foydalanuvchi
     // tokenlarini tozalaymiz. Shunda ilova "kirgan" holatda qotib qolmaydi
     // va foydalanuvchi qaytadan login qilishga yo'naltiriladi.
     if (res.status === 401 && auth === "user") {
       setAccess(null);
-      setRefresh(null);
     }
     const err: APIError = (data && data.error) || { code: "http", message: `HTTP ${res.status}` };
     throw err;
@@ -125,12 +145,6 @@ export interface User {
   district?: string;
   bio?: string;
   skills?: string[];
-  rating: number;
-  reviewsCount: number;
-  workerRating?: number;
-  workerReviewsCount?: number;
-  employerRating?: number;
-  employerReviewsCount?: number;
   completedJobsCount: number;
   isPhoneVerified: boolean;
   isBlocked: boolean;
@@ -185,7 +199,6 @@ export interface Elon {
   publishedAt?: string;
   createdAt: string;
   ownerName?: string;
-  ownerRating?: number;
   ownerAvatarUrl?: string;
   images?: string[];
 }
@@ -232,24 +245,13 @@ export interface Feedback {
   status: "open" | "resolved";
   createdAt: string;
 }
-export interface Review {
-  id: ID;
-  applicationId: ID;
-  elonId: ID;
-  fromUserId: ID;
-  toUserId: ID;
-  direction: "employer_to_worker" | "worker_to_employer";
-  rating: number;
-  comment?: string;
-  createdAt: string;
-}
-
 // ----- admin types -----
 export type AdminRole = "superadmin" | "moderator" | "support";
 
 export interface Admin {
   id: ID;
   username: string;
+  name?: string;
   role: AdminRole;
   isActive: boolean;
   totpEnabled: boolean;
@@ -259,6 +261,7 @@ export interface Admin {
 export interface AdminAudit {
   id: ID;
   adminId: ID;
+  adminName?: string;
   action: string;
   target?: string;
   detail?: string;

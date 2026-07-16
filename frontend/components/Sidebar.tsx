@@ -6,7 +6,7 @@ import {
   Settings, User as UserIcon, PlusCircle, LogOut, MessageSquareWarning,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { api, User, setAccess, setRefresh } from "@/lib/api";
+import { api, User, setAccess } from "@/lib/api";
 import { T } from "./T";
 
 const items = [
@@ -58,7 +58,7 @@ export function Sidebar() {
         </div>
       )}
       <button
-        onClick={() => { setAccess(null); setRefresh(null); router.push("/login"); }}
+        onClick={() => { setAccess(null); router.push("/login"); }}
         className="sidenav-item text-danger"
       >
         <LogOut size={18} /><T>Chiqish</T>

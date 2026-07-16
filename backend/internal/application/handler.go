@@ -162,9 +162,9 @@ func (h *Handler) Apply(w http.ResponseWriter, r *http.Request) {
 					"elonRegion": elon.Region, "elonDistrict": elon.District,
 					"ownerName": elon.OwnerName, "ownerRating": elon.OwnerRating,
 					"ownerAvatarUrl": elon.OwnerAvatarURL,
-					"workerName": app.WorkerName, "workerRating": app.WorkerRating,
+					"workerName":     app.WorkerName, "workerRating": app.WorkerRating,
 					"workerReviewsCount": app.WorkerReviewsCount, "workerAvatarUrl": app.WorkerAvatarURL,
-					"workerVerified": app.WorkerVerified,
+					"workerVerified":        app.WorkerVerified,
 					"employerConfirmedDone": false, "workerConfirmedDone": false,
 				},
 				"$unset": bson.M{"decidedAt": "", "cancelledBy": "", "cancelReason": "", "completedAt": ""},
@@ -223,10 +223,7 @@ func (h *Handler) decide(w http.ResponseWriter, r *http.Request, decision string
 		return
 	}
 	now := time.Now()
-	people := app.PeopleCount
-	if people < 1 {
-		people = 1
-	}
+	people := peopleOf(app)
 	// Qabul qilishda ishchilar sonini inobatga olamiz: guruh arizasidagi kishilar
 	// soni qolgan bo'sh o'rindan ko'p bo'lsa, qabul qilib bo'lmaydi (ish beruvchi
 	// mos kishilik arizani tanlaydi).
@@ -236,13 +233,9 @@ func (h *Handler) decide(w http.ResponseWriter, r *http.Request, decision string
 			httpx.Err(w, httpx.NewError(404, "not_found", "elon not found"))
 			return
 		}
-		remaining := pre.WorkersNeeded - pre.AcceptedCount
-		if remaining < 0 {
-			remaining = 0
-		}
-		if pre.WorkersNeeded > 0 && people > remaining {
+		if !hasEnoughSlots(pre.WorkersNeeded, pre.AcceptedCount, people) {
 			httpx.Err(w, httpx.NewError(409, "not_enough_slots",
-				fmt.Sprintf("Bu arizada %d kishi, ammo atigi %d o'rin qoldi. Kamroq kishilik arizani tanlang.", people, remaining)))
+				fmt.Sprintf("Bu arizada %d kishi, ammo atigi %d o'rin qoldi. Kamroq kishilik arizani tanlang.", people, slotsRemaining(pre.WorkersNeeded, pre.AcceptedCount))))
 			return
 		}
 	}
@@ -363,17 +356,12 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 		httpx.Err(w, httpx.NewError(404, "not_found", "application not found"))
 		return
 	}
-	var who string
-	switch uid {
-	case app.WorkerID:
-		who = "worker"
-	case app.EmployerID:
-		who = "employer"
-	default:
+	who := actorRole(app, uid)
+	if who == "" {
 		httpx.Err(w, httpx.NewError(403, "forbidden", "not your application"))
 		return
 	}
-	if app.Status != "pending" && app.Status != "accepted" {
+	if !canCancel(app.Status) {
 		httpx.Err(w, httpx.NewError(400, "bad_state", "cannot cancel from this state"))
 		return
 	}
@@ -385,10 +373,7 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 	}
 	if wasAccepted {
 		// roll back acceptedCount (guruh arizasidagi kishilar soniga) + status if needed
-		people := app.PeopleCount
-		if people < 1 {
-			people = 1
-		}
+		people := peopleOf(app)
 		var elon models.Elon
 		_ = h.Elons.FindOneAndUpdate(r.Context(),
 			bson.M{"_id": app.ElonID},
@@ -399,10 +384,7 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// notify the other party
-	other := app.EmployerID
-	if uid == app.EmployerID {
-		other = app.WorkerID
-	}
+	other := otherParty(app, uid)
 	h.Notify.Push(r.Context(), other, "application_cancelled", "Ariza bekor qilindi", app.ElonTitle+" — sabab: "+reason, &models.RelatedEntity{Type: "application", ID: appID})
 	httpx.JSON(w, 200, map[string]string{"status": "cancelled"})
 }
@@ -425,10 +407,10 @@ func (h *Handler) ConfirmDone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var setField string
-	switch uid {
-	case app.WorkerID:
+	switch actorRole(app, uid) {
+	case "worker":
 		setField = "workerConfirmedDone"
-	case app.EmployerID:
+	case "employer":
 		setField = "employerConfirmedDone"
 	default:
 		httpx.Err(w, httpx.NewError(403, "forbidden", "not your application"))
@@ -444,23 +426,25 @@ func (h *Handler) ConfirmDone(w http.ResponseWriter, r *http.Request) {
 		httpx.Err(w, err)
 		return
 	}
-	if app.EmployerConfirmedDone && app.WorkerConfirmedDone {
+	if bothConfirmed(app) {
 		now := time.Now()
-		_, _ = h.Apps.UpdateOne(r.Context(), bson.M{"_id": appID}, bson.M{"$set": bson.M{"status": "completed", "completedAt": now}})
-		// bump completedJobsCount on both users
-		_, _ = h.Users.UpdateOne(r.Context(), bson.M{"_id": app.WorkerID}, bson.M{"$inc": bson.M{"completedJobsCount": 1}})
-		_, _ = h.Users.UpdateOne(r.Context(), bson.M{"_id": app.EmployerID}, bson.M{"$inc": bson.M{"completedJobsCount": 1}})
-		// notify both
-		h.Notify.Push(r.Context(), app.WorkerID, "job_completed", "Ish yakunlandi", app.ElonTitle, &models.RelatedEntity{Type: "application", ID: appID})
-		h.Notify.Push(r.Context(), app.EmployerID, "job_completed", "Ish yakunlandi", app.ElonTitle, &models.RelatedEntity{Type: "application", ID: appID})
+		// Shartli yangilash: faqat hali "accepted" bo'lsa yakunlaymiz. Avtomatik
+		// yakunlash scheduleri ayni paytda shu arizani yopib qo'ygan bo'lsa,
+		// ModifiedCount 0 bo'ladi va sanoqni ikki marta oshirmaymiz.
+		res, uerr := h.Apps.UpdateOne(r.Context(), bson.M{"_id": appID, "status": "accepted"}, bson.M{"$set": bson.M{"status": "completed", "completedAt": now}})
+		if uerr == nil && res.ModifiedCount == 1 {
+			// bump completedJobsCount on both users
+			_, _ = h.Users.UpdateOne(r.Context(), bson.M{"_id": app.WorkerID}, bson.M{"$inc": bson.M{"completedJobsCount": 1}})
+			_, _ = h.Users.UpdateOne(r.Context(), bson.M{"_id": app.EmployerID}, bson.M{"$inc": bson.M{"completedJobsCount": 1}})
+			// notify both
+			h.Notify.Push(r.Context(), app.WorkerID, "job_completed", "Ish yakunlandi", app.ElonTitle, &models.RelatedEntity{Type: "application", ID: appID})
+			h.Notify.Push(r.Context(), app.EmployerID, "job_completed", "Ish yakunlandi", app.ElonTitle, &models.RelatedEntity{Type: "application", ID: appID})
+		}
 		httpx.JSON(w, 200, map[string]string{"status": "completed"})
 		return
 	}
 	// notify the other side to confirm
-	other := app.EmployerID
-	if uid == app.EmployerID {
-		other = app.WorkerID
-	}
+	other := otherParty(app, uid)
 	h.Notify.Push(r.Context(), other, "job_completed_request", "Tasdiqlash so'rovi", "Ish yakunlanganini tasdiqlang: "+app.ElonTitle, &models.RelatedEntity{Type: "application", ID: appID})
 	httpx.JSON(w, 200, map[string]string{"status": "awaiting_other"})
 }

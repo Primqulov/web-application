@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Send, ShieldCheck, Clock, MessageSquareText } from "lucide-react";
-import { api, setAccess, setRefresh, User } from "@/lib/api";
+import { api, setAccess, User } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { T, useT } from "@/components/T";
 import { ScriptToggle } from "@/components/ScriptToggle";
@@ -33,10 +33,16 @@ export default function LoginPage() {
   }, []);
 
   // Backend botUrl'ni bermasa (username sozlanmagan bo'lsa), token va ochiq
-  // bot username'idan zaxira havola quramiz. Ikkalasi ham bo'lmasa "#".
-  const botUsername = process.env.NEXT_PUBLIC_BOT_USERNAME || "";
+  // bot username'idan zaxira havola quramiz. NEXT_PUBLIC_BOT_USERNAME sozlanmagan
+  // bo'lsa, rasmiy auth bot (@Ishchi_bormi_auth_bot) default sifatida ishlatiladi.
+  const botUsername = process.env.NEXT_PUBLIC_BOT_USERNAME || "Ishchi_bormi_auth_bot";
   const effectiveBotUrl =
     botUrl || (tgToken && botUsername ? `https://t.me/${botUsername}?start=${tgToken}` : "");
+  // t.me ba'zi tarmoqlarda brauzerda ochilmaydi (DNS bloklanishi mumkin), lekin
+  // Telegram ilovasi ishlaydi. tg:// havolasi DNS'siz to'g'ridan-to'g'ri
+  // o'rnatilgan Telegram ilovasini ochadi — "This site can't be reached" holatida zaxira yo'l.
+  const tgAppUrl =
+    tgToken && botUsername ? `tg://resolve?domain=${botUsername}&start=${tgToken}` : "";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,7 +51,9 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const v = await api.post<Verify>("/api/auth/otp/verify", { token: tgToken, code });
-      setAccess(v.accessToken); setRefresh(v.refreshToken);
+      // Faqat access token saqlanadi. Refresh token localStorage'da saqlanmaydi
+      // (web ilova refresh oqimini ishlatmaydi) — XSS hujum yuzasini kamaytiradi.
+      setAccess(v.accessToken);
       router.replace(v.user.onboardingCompleted ? "/dashboard" : "/onboarding");
     } catch (err: any) {
       setError(err?.message || t("Kod noto'g'ri yoki muddati o'tgan"));
@@ -115,6 +123,16 @@ export default function LoginPage() {
             >
               <Send size={16} /><T>Telegram botga o'tish</T>
             </a>
+
+            {/* t.me brauzerda ochilmasa (DNS bloklangan bo'lsa) — ilovada ochish */}
+            {tgAppUrl && (
+              <a
+                href={tgAppUrl}
+                className="mt-2 block text-center text-xs muted underline underline-offset-2 hover:heading"
+              >
+                <T>Havola ochilmayaptimi? Telegram ilovasida ochish</T>
+              </a>
+            )}
 
             {/* OTP input */}
             <div className="mt-6">

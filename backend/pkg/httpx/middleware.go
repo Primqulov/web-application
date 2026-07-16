@@ -221,6 +221,41 @@ func (l *Limiter) Middleware(prefix string) func(http.Handler) http.Handler {
 	}
 }
 
+// StartCleanup periodically evicts idle buckets so the per-IP map can't grow
+// without bound — otherwise every unique client IP leaves a permanent entry (a
+// slow memory leak). A bucket idle longer than `idle` is safe to drop: by then
+// it has fully refilled to capacity, so a returning client is not handed any
+// extra allowance versus keeping the stale bucket. Pick `idle` comfortably
+// above the bucket's full-refill time (capacity / refillPerSec seconds).
+// Runs in its own goroutine and stops when ctx is cancelled.
+func (l *Limiter) StartCleanup(ctx context.Context, every, idle time.Duration) {
+	go func() {
+		t := time.NewTicker(every)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case now := <-t.C:
+				l.evictIdle(now, idle)
+			}
+		}
+	}()
+}
+
+// evictIdle removes every bucket untouched for longer than `idle` as of `now`.
+// It is the deterministic core of StartCleanup, split out so the eviction rule
+// can be unit-tested without spinning up a ticker and goroutine.
+func (l *Limiter) evictIdle(now time.Time, idle time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for k, b := range l.buckets {
+		if now.Sub(b.last) > idle {
+			delete(l.buckets, k)
+		}
+	}
+}
+
 func clientIP(r *http.Request) string {
 	// Only trust the forwarded header when explicitly configured to run behind a
 	// trusted proxy. Otherwise an attacker can rotate XFF to mint a fresh

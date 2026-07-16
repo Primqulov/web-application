@@ -78,25 +78,25 @@ func envBool(k string, def bool) bool {
 
 func Load() Config {
 	cfg := Config{
-		AppEnv:              strings.ToLower(envStr("APP_ENV", "dev")),
-		MongoURI:            envStr("MONGO_URI", "mongodb://localhost:27017"),
-		MongoDB:             envStr("MONGO_DB", "ishchibormi"),
-		HTTPAddr:            envStr("HTTP_ADDR", ":8080"),
-		TrustProxyHeaders:   envBool("TRUST_PROXY_HEADERS", false),
-		JWTAccessSecret:     envStr("JWT_ACCESS_SECRET", "dev-access-secret"),
-		JWTRefreshSecret:    envStr("JWT_REFRESH_SECRET", "dev-refresh-secret"),
+		AppEnv:            strings.ToLower(envStr("APP_ENV", "dev")),
+		MongoURI:          envStr("MONGO_URI", "mongodb://localhost:27017"),
+		MongoDB:           envStr("MONGO_DB", "ishchibormi"),
+		HTTPAddr:          envStr("HTTP_ADDR", ":8080"),
+		TrustProxyHeaders: envBool("TRUST_PROXY_HEADERS", false),
+		JWTAccessSecret:   envStr("JWT_ACCESS_SECRET", "dev-access-secret"),
+		JWTRefreshSecret:  envStr("JWT_REFRESH_SECRET", "dev-refresh-secret"),
 		// 15 kun (21600 daqiqa). Frontend refresh oqimini ishlatmagani uchun
 		// foydalanuvchi seansi to'g'ridan-to'g'ri shu access token muddati bilan
 		// belgilanadi — qisqa qo'yilsa, logout qilmasa ham tez chiqib ketadi.
-		JWTAccessTTL:        time.Duration(envInt("JWT_ACCESS_TTL_MIN", 21600)) * time.Minute,
-		JWTRefreshTTL:       time.Duration(envInt("JWT_REFRESH_TTL_HRS", 720)) * time.Hour,
-		CORSOrigins:         strings.Split(envStr("CORS_ORIGINS", "http://localhost:3000"), ","),
-		AvatarDir:           envStr("AVATAR_DIR", "./data/avatars"),
-		AdminSeedUser:       envStr("ADMIN_SEED_USER", "admin"),
-		AdminSeedPass:       envStr("ADMIN_SEED_PASS", "Admin123!"),
-		BotSharedSecret:     envStr("BOT_SHARED_SECRET", "dev-shared"),
-		OTPLength:           envInt("OTP_LENGTH", 6),
-		OTPTTL:              time.Duration(envInt("OTP_TTL_SECONDS", 180)) * time.Second,
+		JWTAccessTTL:    time.Duration(envInt("JWT_ACCESS_TTL_MIN", 21600)) * time.Minute,
+		JWTRefreshTTL:   time.Duration(envInt("JWT_REFRESH_TTL_HRS", 720)) * time.Hour,
+		CORSOrigins:     strings.Split(envStr("CORS_ORIGINS", "http://localhost:3000"), ","),
+		AvatarDir:       envStr("AVATAR_DIR", "./data/avatars"),
+		AdminSeedUser:   envStr("ADMIN_SEED_USER", "admin"),
+		AdminSeedPass:   envStr("ADMIN_SEED_PASS", "Admin123!"),
+		BotSharedSecret: envStr("BOT_SHARED_SECRET", "dev-shared"),
+		OTPLength:       envInt("OTP_LENGTH", 6),
+		OTPTTL:          time.Duration(envInt("OTP_TTL_SECONDS", 180)) * time.Second,
 		// Defaults to false: returning OTP codes over the API is a dev-only
 		// convenience and a credential leak in production.
 		OTPDevReturn:        envBool("OTP_DEV_RETURN", false),
