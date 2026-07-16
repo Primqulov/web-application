@@ -1,7 +1,8 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+# Reproducible install from the committed lockfile (same as CI's `npm ci`).
+COPY package.json package-lock.json ./
+RUN npm ci
 
 FROM node:20-alpine AS build
 WORKDIR /app
@@ -21,8 +22,11 @@ RUN npm run build
 FROM node:20-alpine AS run
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app/.next/standalone ./
-COPY --from=build /app/.next/static ./.next/static
-COPY --from=build /app/public ./public
+# Run as the built-in non-root `node` user. --chown keeps the standalone server's
+# files (incl. .next/cache for ISR) writable without root.
+COPY --from=build --chown=node:node /app/.next/standalone ./
+COPY --from=build --chown=node:node /app/.next/static ./.next/static
+COPY --from=build --chown=node:node /app/public ./public
+USER node
 EXPOSE 3000
 CMD ["node", "server.js"]
