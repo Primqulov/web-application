@@ -248,10 +248,31 @@ func (h *Handler) softDelete(ctx context.Context, uid primitive.ObjectID) error 
 		return err
 	}
 
-	// Finally flip the account itself. RequireActiveUser rejects every
-	// subsequent request from this user's still-valid JWT.
+	// Finally flip the account itself and release its identity.
+	//
+	// Unsetting phone/telegramId drops this document out of the unique-sparse
+	// indexes on those fields, which is what lets the same number sign up again:
+	// auth.upsertUser filters on {phone}, finds nothing, and inserts a brand-new
+	// account with a fresh _id. The old profile, listings, applications, reviews
+	// and ratings stay keyed to the old id, so the returning user starts clean
+	// and never sees their previous data. Unsetting (not blanking) matters —
+	// phone has no omitempty, so writing "" would keep the document in the
+	// unique index and the second deleted account would collide with the first.
+	//
+	// The values are copied to deleted* so support can still trace the account.
+	set := bson.M{"isDeleted": true, "updatedAt": now, "deletedAt": now}
+	if u.Phone != "" {
+		set["deletedPhone"] = u.Phone
+	}
+	if u.TelegramID != 0 {
+		set["deletedTelegramId"] = u.TelegramID
+	}
+	// RequireActiveUser rejects every subsequent request from the old JWT.
 	_, err := h.users.UpdateOne(ctx,
 		bson.M{"_id": uid},
-		bson.M{"$set": bson.M{"isDeleted": true, "updatedAt": now}})
+		bson.M{
+			"$set":   set,
+			"$unset": bson.M{"phone": "", "telegramId": ""},
+		})
 	return err
 }

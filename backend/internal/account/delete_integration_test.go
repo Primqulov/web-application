@@ -172,6 +172,85 @@ func TestConfirmDeleteHappyPath(t *testing.T) {
 	}
 }
 
+// Deleting must release the phone/telegramId so the same number can sign up
+// again as a fresh account. The values are unset (not blanked): phone has no
+// omitempty, so a "" would stay in the unique index and the next deletion of
+// another account would collide with this one.
+func TestConfirmDeleteReleasesIdentity(t *testing.T) {
+	db := testDB(t)
+	h := newHandler(db)
+	ctx := context.Background()
+	uid := seedUser(t, db, 555001)
+
+	h.RequestDelete(httptest.NewRecorder(), asUser(http.MethodPost, "/x", "", uid))
+	w := httptest.NewRecorder()
+	h.ConfirmDelete(w, asUser(http.MethodPost, "/x", `{"code":"`+storedCode(t, db, uid)+`"}`, uid))
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+
+	var raw bson.M
+	if err := db.Collection("users").FindOne(ctx, bson.M{"_id": uid}).Decode(&raw); err != nil {
+		t.Fatalf("load user: %v", err)
+	}
+	if _, ok := raw["phone"]; ok {
+		t.Fatalf("phone still present (%v) — the number cannot be reused", raw["phone"])
+	}
+	if _, ok := raw["telegramId"]; ok {
+		t.Fatalf("telegramId still present (%v)", raw["telegramId"])
+	}
+	// Archived for support rather than discarded.
+	if raw["deletedPhone"] != "+998900000001" {
+		t.Fatalf("deletedPhone = %v, want the original number", raw["deletedPhone"])
+	}
+	if raw["deletedTelegramId"] != int64(555001) {
+		t.Fatalf("deletedTelegramId = %v, want 555001", raw["deletedTelegramId"])
+	}
+}
+
+// Two deleted accounts must be able to coexist — proves the unique-sparse index
+// really is freed rather than holding a "" that the second delete collides with.
+func TestTwoDeletedAccountsCoexist(t *testing.T) {
+	db := testDB(t)
+	h := newHandler(db)
+	ctx := context.Background()
+
+	if err := db.Collection("users").Drop(ctx); err != nil {
+		t.Fatalf("drop users: %v", err)
+	}
+	// The production indexes are what make this test meaningful.
+	if _, err := db.Collection("users").Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{Keys: bson.D{{Key: "phone", Value: 1}}, Options: options.Index().SetUnique(true).SetSparse(true)},
+		{Keys: bson.D{{Key: "telegramId", Value: 1}}, Options: options.Index().SetUnique(true).SetSparse(true)},
+	}); err != nil {
+		t.Fatalf("create indexes: %v", err)
+	}
+
+	for i, tgID := range []int64{555010, 555011} {
+		uid := primitive.NewObjectID()
+		if _, err := db.Collection("users").InsertOne(ctx, bson.M{
+			"_id": uid, "phone": "+99890000010" + string(rune('0'+i)),
+			"telegramId": tgID, "isDeleted": false, "createdAt": time.Now(),
+		}); err != nil {
+			t.Fatalf("insert user %d: %v", i, err)
+		}
+		h.RequestDelete(httptest.NewRecorder(), asUser(http.MethodPost, "/x", "", uid))
+		w := httptest.NewRecorder()
+		h.ConfirmDelete(w, asUser(http.MethodPost, "/x", `{"code":"`+storedCode(t, db, uid)+`"}`, uid))
+		if w.Code != http.StatusOK {
+			t.Fatalf("deleting account %d: status %d (%s)", i, w.Code, w.Body.String())
+		}
+	}
+
+	n, err := db.Collection("users").CountDocuments(ctx, bson.M{"isDeleted": true})
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("%d deleted accounts stored, want 2", n)
+	}
+}
+
 // A wrong guess must be rejected, charged against the attempt budget, and must
 // not touch the account.
 func TestConfirmDeleteWrongCode(t *testing.T) {

@@ -35,6 +35,14 @@ type User struct {
 	OnboardingCompleted  bool                 `bson:"onboardingCompleted" json:"onboardingCompleted"`
 	CreatedAt            time.Time            `bson:"createdAt" json:"createdAt"`
 	UpdatedAt            time.Time            `bson:"updatedAt" json:"updatedAt"`
+
+	// Self-deletion releases the account's identity: phone and telegramId are
+	// unset (freeing the unique indexes so the number can register again as a
+	// fresh account) and archived here for support/audit. Only ever populated
+	// on soft-deleted records — see internal/account.softDelete.
+	DeletedPhone      string     `bson:"deletedPhone,omitempty" json:"deletedPhone,omitempty"`
+	DeletedTelegramID int64      `bson:"deletedTelegramId,omitempty" json:"deletedTelegramId,omitempty"`
+	DeletedAt         *time.Time `bson:"deletedAt,omitempty" json:"deletedAt,omitempty"`
 }
 
 // PublicUser is a safe projection.
