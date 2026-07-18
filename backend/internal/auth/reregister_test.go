@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -99,6 +100,65 @@ func TestUpsertUserAfterDeletionCreatesFreshAccount(t *testing.T) {
 	}
 	if _, ok := old["phone"]; ok {
 		t.Fatal("old record reclaimed the phone number")
+	}
+}
+
+// admin.DeleteUser only flips isDeleted — it does NOT release phone/telegramId
+// the way account.softDelete does. Signing in with that number must still land
+// on a live account. Otherwise upsertUser matches the deleted record, hands out
+// tokens for it, and RequireActiveUser 403s the very next request: the client
+// logs in, lands inside, and is bounced straight back to the login screen.
+func TestUpsertUserAfterAdminDeleteCreatesFreshAccount(t *testing.T) {
+	db := testDB(t)
+	h := NewHandler(config.Config{}, db)
+	ctx := context.Background()
+
+	const phone = "+998900000078"
+	oldID := primitive.NewObjectID()
+	if _, err := db.Collection("users").InsertOne(ctx, bson.M{
+		"_id": oldID, "phone": phone, "telegramId": int64(777003),
+		"firstName": "Eski", "isDeleted": false, "createdAt": time.Now(),
+	}); err != nil {
+		t.Fatalf("seed old user: %v", err)
+	}
+	// Exactly what admin.DeleteUser writes: the flag and nothing else.
+	if _, err := db.Collection("users").UpdateOne(ctx,
+		bson.M{"_id": oldID}, bson.M{"$set": bson.M{"isDeleted": true}}); err != nil {
+		t.Fatalf("simulate admin delete: %v", err)
+	}
+
+	fresh, err := h.upsertUser(ctx, phone, 777003)
+	if err != nil {
+		t.Fatalf("upsertUser: %v", err)
+	}
+	if fresh.IsDeleted {
+		t.Fatal("login returned a deleted account — the user is bounced back to login on the next request")
+	}
+	if fresh.ID == oldID {
+		t.Fatal("re-registration revived the admin-deleted account")
+	}
+	if fresh.FirstName != "" {
+		t.Fatalf("old profile leaked into the new account: %+v", fresh)
+	}
+}
+
+// A blocked account must be refused at verify time, with a distinguishable
+// error, instead of being handed tokens that die on the next request.
+func TestUpsertUserRefusesBlockedAccount(t *testing.T) {
+	db := testDB(t)
+	h := NewHandler(config.Config{}, db)
+	ctx := context.Background()
+
+	const phone = "+998900000079"
+	if _, err := db.Collection("users").InsertOne(ctx, bson.M{
+		"_id": primitive.NewObjectID(), "phone": phone, "telegramId": int64(777004),
+		"isBlocked": true, "isDeleted": false, "createdAt": time.Now(),
+	}); err != nil {
+		t.Fatalf("seed blocked user: %v", err)
+	}
+
+	if _, err := h.upsertUser(ctx, phone, 777004); !errors.Is(err, errAccountBlocked) {
+		t.Fatalf("expected errAccountBlocked, got %v", err)
 	}
 }
 

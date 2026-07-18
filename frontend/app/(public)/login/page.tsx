@@ -56,7 +56,14 @@ export default function LoginPage() {
       setAccess(v.accessToken);
       router.replace(v.user.onboardingCompleted ? "/dashboard" : "/onboarding");
     } catch (err: any) {
-      setError(err?.message || t("Kod noto'g'ri yoki muddati o'tgan"));
+      // Bloklangan hisob: backend token bermaydi (aks holda foydalanuvchi
+      // "kirib" darhol qaytib chiqarilardi). Server xabari inglizcha, shuning
+      // uchun kodni o'zimiz tarjima qilamiz.
+      if (err?.code === "account_blocked") {
+        setError(t("Hisobingiz bloklangan"));
+      } else {
+        setError(err?.message || t("Kod noto'g'ri yoki muddati o'tgan"));
+      }
     } finally {
       setSubmitting(false);
     }

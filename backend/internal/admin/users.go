@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/ishchibormi/backend/internal/models"
@@ -171,7 +172,23 @@ func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	_, err = h.Users.UpdateOne(r.Context(), bson.M{"_id": id}, bson.M{"$set": bson.M{"isDeleted": true}})
+	// Release the identity, exactly as account.softDelete does for self-service
+	// deletion: unsetting phone/telegramId drops this document out of the
+	// unique-sparse indexes, which is what lets the number register again later.
+	// Leaving them attached used to strand the user — auth.upsertUser matched
+	// this dead document, so they logged in and were bounced straight back to
+	// the login screen by RequireActiveUser.
+	set := bson.M{"isDeleted": true, "deletedAt": time.Now()}
+	if u.Phone != "" {
+		set["deletedPhone"] = u.Phone
+	}
+	if u.TelegramID != 0 {
+		set["deletedTelegramId"] = u.TelegramID
+	}
+	_, err = h.Users.UpdateOne(r.Context(), bson.M{"_id": id}, bson.M{
+		"$set":   set,
+		"$unset": bson.M{"phone": "", "telegramId": ""},
+	})
 	if err != nil {
 		httpx.Err(w, err)
 		return

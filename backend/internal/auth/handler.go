@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -107,6 +108,13 @@ func (h *Handler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 	}
 	user, err := h.upsertUser(ctx, phone, tgID)
 	if err != nil {
+		// A distinct code from account_disabled: the clients treat that one as
+		// "your session was revoked" and tear down local state, which is the
+		// wrong reaction on a login screen where there is no session yet.
+		if errors.Is(err, errAccountBlocked) {
+			httpx.Err(w, httpx.NewError(403, "account_blocked", "account is blocked"))
+			return
+		}
 		httpx.Err(w, err)
 		return
 	}
@@ -123,9 +131,70 @@ func (h *Handler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, 200, verifyResp{AccessToken: access, RefreshToken: refresh, User: *user})
 }
 
+// errAccountBlocked is returned by upsertUser when the account behind a verified
+// phone number is blocked. Login has to fail loudly here: RequireActiveUser
+// rejects every subsequent request anyway, so issuing tokens would only produce
+// a client that "logs in" and is bounced back out a moment later.
+var errAccountBlocked = errors.New("account is blocked")
+
+// releaseDeletedIdentity detaches phone/telegramId from any soft-deleted account
+// still holding them.
+//
+// account.softDelete releases the identity itself, but admin.DeleteUser only
+// flips isDeleted — so a number deleted from the admin panel stays attached to a
+// dead document. Without this, upsertUser's filter matched that document and
+// login returned a deleted account: the client stored its tokens, navigated
+// inside, and the next API call came back 403 account_disabled, which the
+// clients (correctly) treat as "session revoked" and route back to login. The
+// user saw an endless login → home → login bounce.
+//
+// Detaching also keeps the insert below from colliding with the unique-sparse
+// indexes on phone and telegramId.
+func (h *Handler) releaseDeletedIdentity(ctx context.Context, phone string, tgID int64) error {
+	or := []bson.M{{"phone": phone}}
+	if tgID != 0 {
+		or = append(or, bson.M{"telegramId": tgID})
+	}
+	cur, err := h.users.Find(ctx, bson.M{"isDeleted": true, "$or": or})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = cur.Close(ctx) }()
+
+	now := time.Now()
+	for cur.Next(ctx) {
+		var u models.User
+		if err := cur.Decode(&u); err != nil {
+			continue
+		}
+		// Copied to deleted* so support can still trace the account, mirroring
+		// what account.softDelete records.
+		set := bson.M{"updatedAt": now}
+		if u.Phone != "" {
+			set["deletedPhone"] = u.Phone
+		}
+		if u.TelegramID != 0 {
+			set["deletedTelegramId"] = u.TelegramID
+		}
+		if _, err := h.users.UpdateOne(ctx,
+			bson.M{"_id": u.ID},
+			bson.M{"$set": set, "$unset": bson.M{"phone": "", "telegramId": ""}},
+		); err != nil {
+			return err
+		}
+	}
+	return cur.Err()
+}
+
 func (h *Handler) upsertUser(ctx context.Context, phone string, tgID int64) (*models.User, error) {
 	now := time.Now()
-	filter := bson.M{"phone": phone}
+	if err := h.releaseDeletedIdentity(ctx, phone, tgID); err != nil {
+		return nil, err
+	}
+	// isDeleted is part of the filter as a belt-and-braces guard: even if a
+	// deleted document somehow still holds this number, it is never revived —
+	// the upsert inserts a fresh account instead.
+	filter := bson.M{"phone": phone, "isDeleted": bson.M{"$ne": true}}
 	update := bson.M{
 		"$setOnInsert": bson.M{
 			"createdAt":           now,
@@ -149,8 +218,13 @@ func (h *Handler) upsertUser(ctx context.Context, phone string, tgID int64) (*mo
 	}
 	opts := options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)
 	var u models.User
-	err := h.users.FindOneAndUpdate(ctx, filter, update, opts).Decode(&u)
-	return &u, err
+	if err := h.users.FindOneAndUpdate(ctx, filter, update, opts).Decode(&u); err != nil {
+		return nil, err
+	}
+	if u.IsBlocked {
+		return nil, errAccountBlocked
+	}
+	return &u, nil
 }
 
 type refreshReq struct {
