@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/cors"
 
 	"github.com/ishchibormi/backend/config"
+	"github.com/ishchibormi/backend/internal/account"
 	"github.com/ishchibormi/backend/internal/admin"
 	"github.com/ishchibormi/backend/internal/application"
 	"github.com/ishchibormi/backend/internal/auth"
@@ -91,6 +92,7 @@ func main() {
 
 	authH := auth.NewHandler(cfg, mdb)
 	userH := user.NewHandler(mdb, s3svc)
+	accountH := account.NewHandler(cfg, mdb, s3svc)
 	catH := category.NewHandler(mdb)
 	elonH := elon.NewHandler(mdb, s3svc)
 	appH := application.NewHandler(mdb, notif)
@@ -129,9 +131,10 @@ func main() {
 		MaxAge:         300,
 	}))
 
-	otpLimiter := httpx.NewLimiter(10, 0.5)   // 10 burst, 1 / 2s
-	applyLimiter := httpx.NewLimiter(20, 0.5) // 20 burst, slow refill
-	loginLimiter := httpx.NewLimiter(8, 0.2)  // 8 burst, 1 / 5s — throttles credential brute-force
+	otpLimiter := httpx.NewLimiter(10, 0.5)    // 10 burst, 1 / 2s
+	applyLimiter := httpx.NewLimiter(20, 0.5)  // 20 burst, slow refill
+	loginLimiter := httpx.NewLimiter(8, 0.2)   // 8 burst, 1 / 5s — throttles credential brute-force
+	deleteLimiter := httpx.NewLimiter(5, 0.05) // 5 burst, 1 / 20s — account-deletion codes hit Telegram
 
 	// Evict idle per-IP buckets so the limiter maps don't grow unbounded (each
 	// unique client IP would otherwise leave a permanent entry). The 15-min idle
@@ -140,6 +143,7 @@ func main() {
 	otpLimiter.StartCleanup(ctx, 5*time.Minute, 15*time.Minute)
 	applyLimiter.StartCleanup(ctx, 5*time.Minute, 15*time.Minute)
 	loginLimiter.StartCleanup(ctx, 5*time.Minute, 15*time.Minute)
+	deleteLimiter.StartCleanup(ctx, 5*time.Minute, 15*time.Minute)
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) { httpx.JSON(w, 200, map[string]string{"status": "ok"}) })
 
@@ -176,6 +180,18 @@ func main() {
 
 			r.Get("/me", userH.Me)
 			r.Patch("/me", userH.UpdateMe)
+
+			// Self-service account deletion, confirmed by a code pushed to the
+			// user's Telegram. Rate-limited on both halves: /request pushes a
+			// Telegram message (spam vector), /confirm is a guess against the
+			// code (the per-code attempt counter is the hard cap, this just
+			// slows a distributed grind).
+			r.Group(func(r chi.Router) {
+				r.Use(deleteLimiter.Middleware("acct-delete"))
+				r.Post("/me/delete/request", accountH.RequestDelete)
+				r.Post("/me/delete/confirm", accountH.ConfirmDelete)
+			})
+
 			r.Post("/users/{id}/block", userH.Block)
 			r.Delete("/users/{id}/block", userH.Unblock)
 

@@ -5,6 +5,7 @@ import { Shell } from "@/components/Shell";
 import { AvatarUploader } from "@/components/ui/ImageUpload";
 import { useScript } from "@/lib/i18n";
 import { T, useT } from "@/components/T";
+import { DeleteAccountCard } from "@/components/DeleteAccountCard";
 
 export default function Settings() {
   const t = useT();
@@ -50,11 +51,7 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="card p-6 max-w-xl border-danger">
-        <h2 className="font-semibold text-danger mb-2"><T>Hisobni o'chirish</T></h2>
-        <p className="text-sm text-[color:var(--text-muted)] mb-3"><T>Bu amalni qaytarib bo'lmaydi.</T></p>
-        <button className="btn-danger"><T>O'chirish</T></button>
-      </div>
+      <DeleteAccountCard />
     </Shell>
   );
 }

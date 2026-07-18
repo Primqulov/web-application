@@ -39,6 +39,10 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 		// OTP collection: TTL on expiresAt
 		{"otp_codes", mongo.IndexModel{Keys: bson.D{{Key: "expiresAt", Value: 1}}, Options: options.Index().SetExpireAfterSeconds(0)}},
 		{"otp_codes", mongo.IndexModel{Keys: bson.D{{Key: "tgToken", Value: 1}}}},
+
+		// Account-deletion codes: one live code per user, TTL-reaped on expiry.
+		{"delete_codes", mongo.IndexModel{Keys: bson.D{{Key: "expiresAt", Value: 1}}, Options: options.Index().SetExpireAfterSeconds(0)}},
+		{"delete_codes", mongo.IndexModel{Keys: bson.D{{Key: "userId", Value: 1}}, Options: options.Index().SetUnique(true)}},
 	}
 	for _, s := range specs {
 		if _, err := db.Collection(s.coll).Indexes().CreateOne(ctx, s.idx); err != nil {
