@@ -47,13 +47,20 @@ Oxirgi tekshiruv: 2026-07-19.
 
 Quyidagilar **kodda umuman yo'q**. Maxfiylik siyosatida ham yo'q bo'lishi shart:
 
-- **Analitika / crash reporting** — `pubspec.yaml` da Firebase, Crashlytics,
-  Google Analytics, Sentry, Amplitude va shunga o'xshash **hech qanday SDK yo'q**.
 - **Kamera** — `post_job_page.dart:_pickImages()` faqat `pickMultiImage()`
   chaqiradi. `ImageSource.camera` butun kod bazasida ishlatilmaydi.
   `NSCameraUsageDescription` shu sababli `Info.plist` dan olib tashlandi.
-- **Qurilma/brauzer identifikatorlari** — device model, OS versiyasi, advertising
-  ID yig'ilmaydi.
+- **Reklama identifikatorlari** — advertising ID yig'ilmaydi, reklama SDK yo'q.
+
+> ⚠️ **2026-07-23 dan boshlab Firebase ULANGAN** (`pubspec.yaml`:
+> firebase_core/messaging/analytics/crashlytics; `lib/bootstrap.dart`).
+> `google-services.json` qo'shilgan zahoti Crashlytics (qurilma modeli, OS
+> versiyasi, xatolik joyi), Analytics (anonim foydalanish statistikasi) va FCM
+> (push token — serverda `device_tokens` kolleksiyasida) ishga tushadi. Bu
+> maxfiylik siyosatining "Texnik xizmatlar (Firebase)" bo'limida (ilova ichida
+> ham, webda ham) oshkor qilingan — o'sha bo'limlarni o'chirmang va Play
+> Console'dagi Data Safety formasida ham e'lon qiling: Crash logs, Diagnostics,
+> App interactions (analytics), Device or other IDs (FCM token).
 - **Chat / xabarlar** — backend'da `/api/ws` yoki conversations endpoint'lari
   **yo'q** (`cmd/api/main.go` marshrutlar ro'yxatiga qarang). Flutter'dagi
   `features/chat/` — ishlatilmayotgan data qatlami, serveri yo'q.

@@ -19,12 +19,14 @@ import { getAccess } from "@/lib/api";
  * shart. Ilova/backend qilmaydigan narsani yozish — Google Play siyosatini
  * buzish (noto'g'ri oshkor qilish). Xususan, quyidagilar ATAYLAB yo'q, chunki
  * kodda ular yo'q:
- *   - analitika, Firebase, Crashlytics, Google Analytics (hech qanday SDK yo'q)
- *   - brauzer/qurilma turi, reklama identifikatorlari (yig'ilmaydi)
+ *   - reklama identifikatorlari va reklama tarmoqlari (yig'ilmaydi)
  *   - kamera (ilova faqat galereyadan rasm tanlaydi — pickMultiImage)
  *   - chat/xabarlar va moliyaviy hisobotlar (backend'da bunday endpoint yo'q)
  *   - sharhlar va baholar (kodda hech qachon yozilmaydi)
  *   - foydalanuvchi paroli (kirish faqat Telegram OTP orqali; parol umuman yo'q)
+ * Firebase (Crashlytics, Analytics, Cloud Messaging) mobil ilovaga ULANGAN va
+ * "firebase" bo'limida oshkor qilingan — bu bo'limni o'chirmang; SDK'lar
+ * pubspec.yaml da, ishga tushirish flutter-app/lib/bootstrap.dart da.
  * Muddatlar `lib/retention.ts` dan olinadi — u backend qiymatlariga bog'langan.
  */
 
@@ -32,6 +34,7 @@ const SECTIONS = [
   { id: "intro",     label: "Kirish",                        icon: FileText },
   { id: "collect",   label: "Qaysi ma'lumotlarni yig'amiz",  icon: Database },
   { id: "notcollect",label: "Nimalarni yig'MAYMIZ",          icon: ShieldCheck },
+  { id: "firebase",  label: "Texnik xizmatlar (Firebase)",   icon: AlertCircle },
   { id: "use",       label: "Ma'lumotlardan foydalanish",    icon: UserCog },
   { id: "permissions",label: "Ilova ruxsatlari",             icon: Smartphone },
   { id: "location",  label: "Joylashuv va xaritalar",        icon: MapPin },
@@ -208,15 +211,59 @@ export default function PrivacyPage() {
               </T>
             </P>
             <ul className="mt-2 space-y-1.5 text-sm muted list-disc pl-5">
-              <li><T>Hech qanday analitika yoki kuzatuv tizimi — Google Analytics, Firebase, Crashlytics va shunga o'xshashlar ishlatilmaydi.</T></li>
               <li><T>Reklama identifikatorlari va reklama tarmoqlari yo'q. Ilovada reklama umuman ko'rsatilmaydi.</T></li>
-              <li><T>Qurilma modeli, operatsion tizim versiyasi, brauzer turi kabi qurilma "barmoq izlari" yig'ilmaydi.</T></li>
+              <li><T>Sizni reklama maqsadida kuzatadigan yoki profillaydigan tizimlar yo'q — quyidagi "Texnik xizmatlar" bo'limida yozilgan xatolik va statistika xizmatlaridan boshqa hech narsa ishlatilmaydi.</T></li>
               <li><T>Kontaktlar ro'yxati, SMS va qo'ng'iroqlar tarixiga murojaat qilinmaydi.</T></li>
               <li><T>Kameraga murojaat qilinmaydi — rasmlar faqat galereyadan tanlanadi.</T></li>
               <li><T>Fon rejimida (ilovadan chiqqaningizdan keyin) joylashuv kuzatilmaydi.</T></li>
               <li><T>Parolingiz yo'q va saqlanmaydi — kirish faqat Telegram orqali yuboriladigan bir martalik kod bilan amalga oshiriladi.</T></li>
               <li><T>To'lov ma'lumotlari (karta raqami va h.k.) qabul qilinmaydi — pul hisob-kitobi platformadan tashqarida, tomonlar o'rtasida bo'ladi.</T></li>
             </ul>
+          </Sec>
+
+          <Sec id="firebase" icon={<AlertCircle size={18} />} title="Texnik xizmatlar (Firebase)">
+            <P>
+              <T>
+                Mobil ilova barqaror ishlashi va bildirishnomalar yetib borishi
+                uchun Google Firebase xizmatlaridan foydalanadi. Ular quyidagi
+                texnik ma'lumotlarni yig'adi va bu ma'lumotlar reklama yoki
+                shaxsni profillash uchun ishlatilmaydi:
+              </T>
+            </P>
+            <ul className="mt-2 space-y-1.5 text-sm muted list-disc pl-5">
+              <li>
+                <b className="heading">Crashlytics (xatolik hisobotlari):</b>{" "}
+                <T>
+                  ilova kutilmaganda yopilsa, xatolik joyi, qurilma modeli va
+                  Android versiyasi kabi texnik ma'lumotlar yuboriladi — faqat
+                  nosozliklarni topib tuzatish uchun.
+                </T>
+              </li>
+              <li>
+                <b className="heading">Analytics (foydalanish statistikasi):</b>{" "}
+                <T>
+                  qaysi ekranlar ochilgani kabi umumlashtirilgan, anonim
+                  statistika — ilovani yaxshilash uchun. Bu sizning ismingiz yoki
+                  telefon raqamingizga bog'lanmaydi.
+                </T>
+              </li>
+              <li>
+                <b className="heading">Cloud Messaging (push-bildirishnomalar):</b>{" "}
+                <T>
+                  bildirishnoma yetkazish uchun qurilmangizga beriladigan texnik
+                  token serverimizda hisobingizga bog'lab saqlanadi. Hisobdan
+                  chiqsangiz yoki hisobni o'chirsangiz token ham o'chiriladi.
+                  Bildirishnomalarni ilova sozlamalaridan o'chirib qo'yishingiz
+                  mumkin.
+                </T>
+              </li>
+            </ul>
+            <P>
+              <T>
+                Bu xizmatlar bo'yicha Google ma'lumotlarni o'z maxfiylik
+                siyosatiga muvofiq qayta ishlaydi (policies.google.com/privacy).
+              </T>
+            </P>
           </Sec>
 
           <Sec id="use" icon={<UserCog size={18} />} title="Ma'lumotlardan foydalanish">
@@ -234,10 +281,10 @@ export default function PrivacyPage() {
           <Sec id="permissions" icon={<Smartphone size={18} />} title="Android ilovasi qaysi ruxsatlarni so'raydi">
             <P>
               <T>
-                Ilova to'rtta tizim ruxsatini e'lon qiladi va har biri aniq bir
-                funksiya uchun. Ulardan faqat joylashuv ruxsati sizdan so'raladi
-                — qolganlari "oddiy" (normal) toifadagi ruxsatlar bo'lib, alohida
-                tasdiq talab qilmaydi:
+                Ilova beshta tizim ruxsatini e'lon qiladi va har biri aniq bir
+                funksiya uchun. Ulardan faqat joylashuv va bildirishnoma
+                ruxsatlari sizdan so'raladi — qolganlari "oddiy" (normal)
+                toifadagi ruxsatlar bo'lib, alohida tasdiq talab qilmaydi:
               </T>
             </P>
             <ul className="mt-2 space-y-1.5 text-sm muted list-disc pl-5">
@@ -259,6 +306,15 @@ export default function PrivacyPage() {
                   ish joyini xaritada belgilash va sizga eng yaqin e'lonlarni
                   birinchi ko'rsatish uchun. Ruxsat bermasangiz ham ilova
                   ishlaydi — e'lonlar shunchaki masofa bo'yicha tartiblanmaydi.
+                </T>
+              </li>
+              <li>
+                <b className="heading">POST_NOTIFICATIONS:</b>{" "}
+                <T>
+                  push-bildirishnomalar ko'rsatish uchun (arizangiz qabul
+                  qilindi va h.k., Android 13+ da so'raladi). Rad etsangiz ham
+                  ilova to'liq ishlaydi — bildirishnomalarni ilova ichida
+                  ko'raverasiz.
                 </T>
               </li>
             </ul>

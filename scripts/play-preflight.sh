@@ -61,6 +61,9 @@ ovozli|ovozli xabar (voice recordings)
 file ID|fayl identifikatori (file ID)
 username|Telegram username
 llab-quvvatlash|qo'llab-quvvatlash boti
+Crashlytics|Crashlytics oshkorasi (Firebase ulangan!)
+Cloud Messaging|FCM push oshkorasi
+POST_NOTIFICATIONS|POST_NOTIFICATIONS ruxsati
 TERMS
 fi
 
