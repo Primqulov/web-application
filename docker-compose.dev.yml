@@ -1,0 +1,27 @@
+# Lokal dev overlay. Ishlatish:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
+# (yoki: make dev)
+#
+# docker-compose.yml dagi backend ataylab APP_ENV=production +
+# OTP_DEV_RETURN=false literallariga mixlangan — prod server diskida eski dev
+# .env qolib ketsa ham xavfsiz rejim buzilmasligi uchun. Dev rejim (OTP kodni
+# API javobida qaytarish, localhost CORS) faqat shu overlay orqali yoqiladi.
+#
+# DIQQAT: bu faylni docker-compose.override.yml deb NOMLAMANG — compose u
+# nomdagi faylni avtomatik yuklaydi va prod serverda ham qo'llanib ketardi.
+services:
+  backend:
+    environment:
+      APP_ENV: "dev"
+      OTP_DEV_RETURN: "true"
+      CORS_ORIGINS: "http://localhost:3000"
+      TRUST_PROXY_HEADERS: "false"
+
+  frontend:
+    build:
+      args:
+        NEXT_PUBLIC_API_BASE: http://localhost:8080
+        NEXT_PUBLIC_WS_BASE: ws://localhost:8080
+    environment:
+      NEXT_PUBLIC_API_BASE: http://localhost:8080
+      NEXT_PUBLIC_WS_BASE: ws://localhost:8080

@@ -125,13 +125,14 @@ func AdminAuth(secret string) func(http.Handler) http.Handler {
 	}
 }
 
+// tokenFromReq reads the Bearer token from the Authorization header only.
+// A ?token= query fallback used to exist for <a>-tag CSV downloads, but URL
+// tokens leak into proxy logs and browser history; the admin UI now downloads
+// via fetch with a proper header, so the fallback is gone on purpose.
 func tokenFromReq(r *http.Request) string {
 	h := r.Header.Get("Authorization")
 	if strings.HasPrefix(h, "Bearer ") {
 		return strings.TrimPrefix(h, "Bearer ")
-	}
-	if t := r.URL.Query().Get("token"); t != "" {
-		return t
 	}
 	return ""
 }

@@ -31,11 +31,16 @@ services:
       MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017}
       MONGO_DB: ${MONGO_DB:-ishchibormi}
       HTTP_ADDR: ":8080"
-      # Prod default'lar (.env ustun keladi). CORS noto'g'ri bo'lsa brauzer
-      # frontend so'rovlarini bloklaydi; OTP_DEV_RETURN prod'da false bo'lishi shart.
+      # Prod default'lar. CORS noto'g'ri bo'lsa brauzer frontend so'rovlarini
+      # bloklaydi.
       CORS_ORIGINS: ${CORS_ORIGINS:-https://ishchibormi.uz}
-      APP_ENV: ${APP_ENV:-production}
-      OTP_DEV_RETURN: ${OTP_DEV_RETURN:-false}
+      # ATAYLAB literal (interpolatsiyasiz): ${VAR:-...} shakli qiymatni .env
+      # faylidan parse vaqtida oladi, ya'ni diskda eski dev .env qolgan bo'lsa
+      # prod'da APP_ENV=dev + OTP_DEV_RETURN=true (OTP kodini API javobida
+      # qaytaradi!) yoqilib qolardi. Bu fayl bilan prod'ni dev rejimga o'tkazib
+      # BO'LMAYDI — lokal dev uchun docker-compose.dev.yml overlay'ini ishlating.
+      APP_ENV: "production"
+      OTP_DEV_RETURN: "false"
       # Google Play review login — .env yo'q bo'lsa HAR DOIM o'chiq.
       # Yoqish faqat ataylab qilingan amal bo'lishi kerak; batafsil izoh
       # .env.example va backend/internal/auth/review.go da.

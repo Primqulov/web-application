@@ -77,7 +77,7 @@ export const RETENTION_TABLE: readonly RetentionRow[] = [
   },
   {
     what: "Kirish tokeni (JWT)",
-    howLong: "15 kun. Server tomonida saqlanmaydi — faqat qurilmangizda turadi.",
+    howLong: "3 kun. Server tomonida saqlanmaydi — faqat qurilmangizda turadi.",
   },
   {
     what: "Yangilash tokeni (refresh JWT)",

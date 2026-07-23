@@ -160,6 +160,10 @@ func main() {
 	applyLimiter := httpx.NewLimiter(20, 0.5)  // 20 burst, slow refill
 	loginLimiter := httpx.NewLimiter(8, 0.2)   // 8 burst, 1 / 5s — throttles credential brute-force
 	deleteLimiter := httpx.NewLimiter(5, 0.05) // 5 burst, 1 / 20s — account-deletion codes hit Telegram
+	// Refresh legitimately fires on every 401 from the mobile interceptor, so
+	// the budget is generous — this only caps offline brute-force of refresh
+	// tokens and accidental client retry-loops.
+	refreshLimiter := httpx.NewLimiter(30, 0.1) // 30 burst, 1 / 10s
 
 	// Evict idle per-IP buckets so the limiter maps don't grow unbounded (each
 	// unique client IP would otherwise leave a permanent entry). The 15-min idle
@@ -169,6 +173,7 @@ func main() {
 	applyLimiter.StartCleanup(ctx, 5*time.Minute, 15*time.Minute)
 	loginLimiter.StartCleanup(ctx, 5*time.Minute, 15*time.Minute)
 	deleteLimiter.StartCleanup(ctx, 5*time.Minute, 15*time.Minute)
+	refreshLimiter.StartCleanup(ctx, 5*time.Minute, 15*time.Minute)
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) { httpx.JSON(w, 200, map[string]string{"status": "ok"}) })
 
@@ -188,7 +193,7 @@ func main() {
 			r.Post("/auth/otp/verify", authH.VerifyOTP)
 			r.Get("/auth/otp/peek", authH.DevPeekOTP)
 		})
-		r.Post("/auth/refresh", authH.Refresh)
+		r.With(refreshLimiter.Middleware("refresh")).Post("/auth/refresh", authH.Refresh)
 
 		// Public listing. OptionalUserAuth doesn't gate anything — it only lets
 		// the feed recognise the Play review account, so a reviewer sees the

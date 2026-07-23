@@ -76,7 +76,7 @@ ular quyidagicha bajariladi:
 |---|---|---|
 | Kirish (OTP) kodi | 3 daqiqa | `OTP_TTL_SECONDS`; Mongo TTL index `otp_codes.expiresAt` |
 | O'chirish kodi | 10 daqiqa | `deleteCodeTTL`; TTL index `delete_codes.expiresAt` |
-| Access JWT | 15 kun | `JWT_ACCESS_TTL_MIN=21600`; serverda saqlanmaydi |
+| Access JWT | 3 kun | `JWT_ACCESS_TTL_MIN=4320`; serverda saqlanmaydi |
 | Refresh JWT | 30 kun | `JWT_REFRESH_TTL_HRS=720`; serverda saqlanmaydi |
 | E'lon (foydalanuvchi o'chirsa) | **darhol, butunlay** | `elon.Delete` — `DeleteOne` + arizalar + rasmlar |
 | Profil, e'lon, ariza, bildirishnoma, feedback, report | hisob faol bo'lgunicha | — |
@@ -301,7 +301,7 @@ yo'q) — bu barcha hisoblar uchun shunday.
    sessiya ochilmaydi
 2. `reviewaccount close` — hisobni bloklaydi
 
-Faqat birinchisi yetarli emas: access token TTL 15 kun. Hisob bloklanganda esa
+Faqat birinchisi yetarli emas: access token TTL 3 kun. Hisob bloklanganda esa
 `RequireActiveUser` mavjud sessiyani darhol rad etadi.
 
 Oyna `REVIEW_LOGIN_EXPIRES_AT` da o'zi ham yopiladi (maksimum 30 kun, tavsiya

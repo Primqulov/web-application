@@ -43,9 +43,11 @@ const jsonLd = {
 export default function Page() {
   return (
     <>
+      {/* Kontent statik bo'lsa ham "<" ni escape qilamiz — boshqa JSON-LD
+          joylari bilan bir xil qoida, dinamik maydon qo'shilsa ham xavfsiz. */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
       <LandingClient />
     </>

@@ -91,7 +91,13 @@ func main() {
 	}
 	mongoURI := getenv("MONGO_URI", "mongodb://localhost:27017")
 	dbName := getenv("MONGO_DB", "ishchibormi")
-	adminPhone := getenv("SUPPORT_ADMIN_PHONE", "+998900202535")
+	// Admin-javob botiga kirish huquqini beruvchi telefon — bu avtorizatsiya
+	// darvozasi, shuning uchun kodda default YO'Q: env berilmasa boshlamaymiz
+	// (jimgina noto'g'ri raqamga ochilib qolgandan ko'ra yiqilgan afzal).
+	adminPhone := os.Getenv("SUPPORT_ADMIN_PHONE")
+	if adminPhone == "" {
+		log.Fatal("SUPPORT_ADMIN_PHONE required (.env da o'rnating)")
+	}
 
 	ctx := context.Background()
 	mc, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))

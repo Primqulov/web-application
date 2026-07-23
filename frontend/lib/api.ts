@@ -36,17 +36,30 @@ export function getAdminToken(): string | null {
 }
 
 // downloadAdminCsv triggers a browser download of an admin CSV export. The admin
-// JWT is passed via ?token= (a plain <a> download can't send the Authorization
-// header); the backend's AdminAuth accepts it there.
-export function downloadAdminCsv(path: string, params?: URLSearchParams) {
+// JWT goes in the Authorization header (fetch + blob), never in the URL —
+// query-string tokens end up in proxy access logs and browser history.
+export async function downloadAdminCsv(path: string, params?: URLSearchParams) {
   if (typeof document === "undefined") return;
-  const qs = new URLSearchParams(params ? params.toString() : "");
-  qs.set("token", getAdminToken() || "");
-  const a = document.createElement("a");
-  a.href = `${API_BASE}${path}?${qs}`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  const qs = params && params.toString() ? `?${params}` : "";
+  try {
+    const res = await fetch(`${API_BASE}${path}${qs}`, {
+      headers: { Authorization: `Bearer ${getAdminToken() || ""}` },
+    });
+    if (!res.ok) throw new Error(`export failed: ${res.status}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    // /api/admin/export/users.csv -> users.csv
+    a.download = path.split("/").pop() || "export.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error("CSV export:", e);
+    alert("Eksport muvaffaqiyatsiz. Qayta urinib ko'ring.");
+  }
 }
 
 // getAdminRole decodes the role claim from the stored admin JWT so the UI can

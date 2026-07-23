@@ -227,7 +227,7 @@ func closeReview(ctx context.Context, users *mongo.Collection) {
 	}
 	fmt.Printf("Review hisobi bloklandi: %s\n", u.ID.Hex())
 	fmt.Println()
-	fmt.Println("MUHIM — bu yetarli emas. Access token 15 kun yashaydi, lekin")
+	fmt.Println("MUHIM — bu yetarli emas. Access token 3 kun yashaydi, lekin")
 	fmt.Println("RequireActiveUser bloklangan hisobni har so'rovda rad etadi, ya'ni")
 	fmt.Println("mavjud sessiya ham shu daqiqada o'ladi. Shunga qaramay .env dan")
 	fmt.Println("REVIEW_LOGIN_ENABLED=false qo'ying va REVIEW_LOGIN_CODE ni tozalang,")

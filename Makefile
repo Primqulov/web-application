@@ -1,7 +1,13 @@
-.PHONY: up down logs seed lint test be-run fe-run bot-run
+.PHONY: up dev down logs seed lint test be-run fe-run bot-run
 
 up:
 	docker compose up --build -d
+
+# Lokal dev rejim (APP_ENV=dev, OTP_DEV_RETURN=true, localhost CORS).
+# Prod compose fayli ataylab production literallariga mixlangan — dev faqat
+# shu overlay orqali yoqiladi (docker-compose.dev.yml dagi izohga qarang).
+dev:
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
 
 down:
 	docker compose down

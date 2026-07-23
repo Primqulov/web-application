@@ -139,10 +139,12 @@ func Load() Config {
 		TrustProxyHeaders: envBool("TRUST_PROXY_HEADERS", false),
 		JWTAccessSecret:   envStr("JWT_ACCESS_SECRET", "dev-access-secret"),
 		JWTRefreshSecret:  envStr("JWT_REFRESH_SECRET", "dev-refresh-secret"),
-		// 15 kun (21600 daqiqa). Frontend refresh oqimini ishlatmagani uchun
-		// foydalanuvchi seansi to'g'ridan-to'g'ri shu access token muddati bilan
-		// belgilanadi — qisqa qo'yilsa, logout qilmasa ham tez chiqib ketadi.
-		JWTAccessTTL:    time.Duration(envInt("JWT_ACCESS_TTL_MIN", 21600)) * time.Minute,
+		// 72 soat (4320 daqiqa). Mobil ilova 401 da refresh oqimi bilan o'zi
+		// yangilaydi, shuning uchun unga sezilmaydi. Web frontend refresh
+		// tokenni ataylab saqlamaydi (XSS yuzasini qisqartirish uchun) — web
+		// seansi shu muddat bilan tugaydi va foydalanuvchi qayta OTP orqali
+		// kiradi. O'g'irlangan token ilgari 15 kun yashardi; endi ko'pi 3 kun.
+		JWTAccessTTL:    time.Duration(envInt("JWT_ACCESS_TTL_MIN", 4320)) * time.Minute,
 		JWTRefreshTTL:   time.Duration(envInt("JWT_REFRESH_TTL_HRS", 720)) * time.Hour,
 		CORSOrigins:     strings.Split(envStr("CORS_ORIGINS", "http://localhost:3000"), ","),
 		AvatarDir:       envStr("AVATAR_DIR", "./data/avatars"),
