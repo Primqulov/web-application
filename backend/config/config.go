@@ -39,6 +39,11 @@ type Config struct {
 	TelegramBotToken    string
 	TelegramBotUsername string
 
+	// FCMCredentialsFile — Firebase service-account JSON fayl yo'li (mobil
+	// push uchun). Bo'sh bo'lsa push jimgina o'chiq: API to'liq ishlayveradi,
+	// bildirishnomalar faqat in-app (polling) bo'lib qoladi.
+	FCMCredentialsFile string
+
 	// AWS S3
 	AWSRegion          string
 	AWSAccessKeyID     string
@@ -151,6 +156,8 @@ func Load() Config {
 		OTPDevReturn:        envBool("OTP_DEV_RETURN", false),
 		TelegramBotToken:    envStr("TELEGRAM_BOT_TOKEN", ""),
 		TelegramBotUsername: envStr("TELEGRAM_BOT_USERNAME", ""),
+
+		FCMCredentialsFile: envStr("FCM_CREDENTIALS_FILE", ""),
 
 		AWSRegion:          envStr("AWS_REGION", "eu-central-1"),
 		AWSAccessKeyID:     envStr("AWS_ACCESS_KEY_ID", ""),

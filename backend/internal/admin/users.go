@@ -193,6 +193,8 @@ func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		httpx.Err(w, err)
 		return
 	}
+	// O'chirilgan hisobning qurilmalariga push (masalan broadcast) ketmasin.
+	_, _ = h.Users.Database().Collection("device_tokens").DeleteMany(r.Context(), bson.M{"userId": id})
 	h.audit(r, "user_delete", id.Hex(), "soft-delete")
 	httpx.JSON(w, 200, map[string]bool{"ok": true})
 }

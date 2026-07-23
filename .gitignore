@@ -25,6 +25,8 @@ build/
 backend/.env
 bot/.env
 frontend/.env*.local
+# Firebase service-account kaliti (FCM push) va boshqa server sirlari
+secrets/
 
 # ── Data / runtime ─────────────────────────────
 /backend/data/

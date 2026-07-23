@@ -36,6 +36,11 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 		{"categories", mongo.IndexModel{Keys: bson.D{{Key: "slug", Value: 1}}, Options: options.Index().SetUnique(true)}},
 
 		{"notifications", mongo.IndexModel{Keys: bson.D{{Key: "userId", Value: 1}, {Key: "createdAt", Value: -1}}}},
+
+		// FCM qurilma tokenlari: bitta token — bitta hujjat (upsert kaliti);
+		// push yuborishda foydalanuvchining hamma qurilmasi userId bo'yicha olinadi.
+		{"device_tokens", mongo.IndexModel{Keys: bson.D{{Key: "token", Value: 1}}, Options: options.Index().SetUnique(true)}},
+		{"device_tokens", mongo.IndexModel{Keys: bson.D{{Key: "userId", Value: 1}}}},
 		{"reports", mongo.IndexModel{Keys: bson.D{{Key: "status", Value: 1}, {Key: "createdAt", Value: -1}}}},
 
 		{"admins", mongo.IndexModel{Keys: bson.D{{Key: "username", Value: 1}}, Options: options.Index().SetUnique(true)}},

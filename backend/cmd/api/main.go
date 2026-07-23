@@ -22,6 +22,7 @@ import (
 	"github.com/ishchibormi/backend/internal/elon"
 	"github.com/ishchibormi/backend/internal/feedback"
 	"github.com/ishchibormi/backend/internal/notification"
+	"github.com/ishchibormi/backend/internal/push"
 	"github.com/ishchibormi/backend/internal/report"
 	"github.com/ishchibormi/backend/internal/upload"
 	"github.com/ishchibormi/backend/internal/user"
@@ -64,6 +65,23 @@ func main() {
 
 	// services
 	notif := notification.New(mdb)
+
+	// Mobil push (FCM). Credentials berilmasa jimgina o'chiq — API to'liq
+	// ishlayveradi, bildirishnomalar faqat in-app (polling) bo'lib qoladi.
+	// Ulanish nuqtasi: notification.Service.Push ichidagi Pusher chaqiruvi —
+	// har bir in-app notification (ariza, qabul, rad, broadcast) shu yerdan
+	// o'tadi, shuning uchun alohida "push yuborish" kodi hech qayerda kerak emas.
+	pushH := push.NewHandler(mdb)
+	if cfg.FCMCredentialsFile != "" {
+		if fcm, err := push.NewFCM(cfg.FCMCredentialsFile, mdb, log); err != nil {
+			log.Warn("fcm init failed — mobile push disabled", "err", err)
+		} else {
+			notif.AttachPusher(fcm)
+			log.Info("fcm push ready", "project", fcm.ProjectID())
+		}
+	} else {
+		log.Info("fcm push disabled (FCM_CREDENTIALS_FILE not set)")
+	}
 
 	// S3 storage — optional. If creds aren't set, upload endpoints return 503.
 	var s3svc *storage.Service
@@ -198,6 +216,11 @@ func main() {
 
 			r.Get("/me", userH.Me)
 			r.Patch("/me", userH.UpdateMe)
+
+			// Mobil qurilmaning FCM push tokenini ro'yxatga olish (login'dan
+			// keyin / token yangilanganda) va o'chirish (logout'da).
+			r.Post("/users/me/device-token", pushH.Register)
+			r.Delete("/users/me/device-token", pushH.Unregister)
 
 			// Self-service account deletion, confirmed by a code pushed to the
 			// user's Telegram. Rate-limited on both halves: /request pushes a

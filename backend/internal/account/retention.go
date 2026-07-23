@@ -264,6 +264,10 @@ func (p *Purger) purgeUser(ctx context.Context, u models.User) error {
 	if _, err := p.codes.DeleteMany(ctx, bson.M{"userId": uid}); err != nil {
 		return err
 	}
+	// FCM qurilma tokenlari — softDelete'da o'chirilgan, bu shunchaki kafolat.
+	if _, err := p.codes.Database().Collection("device_tokens").DeleteMany(ctx, bson.M{"userId": uid}); err != nil {
+		return err
+	}
 	// Login OTPs are keyed by phone/telegramId, not userId, and the live values
 	// were moved to deleted* when the identity was released. A TTL index reaps
 	// these within minutes anyway; this is the belt to that suspenders.

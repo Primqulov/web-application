@@ -18,7 +18,11 @@ export function SlotProgress({ accepted, needed }: { accepted: number; needed: n
         <span className="text-[color:var(--text-muted)]">
           <T>To'ldi</T>: <span className="font-semibold text-[color:var(--text)]">{acc}/{needed}</span> <T>kishi</T>
         </span>
-        {full && <span className="badge-success text-[10px]"><T>Joy to'ldi</T></span>}
+        {full ? (
+          <span className="badge-success text-[10px]"><T>Joy to'ldi</T></span>
+        ) : (
+          <span className="badge-amber text-[10px]">{total - acc} <T>joy qoldi</T></span>
+        )}
       </div>
       <div className="relative h-2.5 rounded-full overflow-hidden" style={{ background: "var(--bg-subtle)" }}>
         <div

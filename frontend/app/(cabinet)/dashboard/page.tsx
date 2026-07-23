@@ -200,6 +200,15 @@ function JobCard({ e }: { e: Elon }) {
         {(e.gender === "male" || e.gender === "female") && (
           <span className="badge-neutral"><T>{GENDER_LABEL[e.gender]}</T></span>
         )}
+        {/* A single-slot job showing "1 joy qoldi" is noise, not information —
+            only multi-worker listings get this badge. */}
+        {e.workersNeeded > 1 && (
+          (e.acceptedCount || 0) >= e.workersNeeded ? (
+            <span className="badge-success"><T>Joy to'ldi</T></span>
+          ) : (
+            <span className="badge-amber">{e.workersNeeded - (e.acceptedCount || 0)} <T>joy qoldi</T></span>
+          )
+        )}
       </div>
 
       <div className="mt-4 pt-3 border-t flex items-end justify-between" style={{ borderColor: "var(--border)" }}>

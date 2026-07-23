@@ -10,6 +10,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { StatusBadge } from "@/components/StatusBadge";
+import { SlotProgress } from "@/components/ui/SlotProgress";
 import { Modal } from "@/components/Modal";
 import { T, useT } from "@/components/T";
 import { fmtSumSom, fromNow } from "@/lib/format";
@@ -99,6 +100,12 @@ export default function MyElons() {
                 <span className="text-xs muted"><T>{e.categoryName}</T></span>
                 {e.publishedAt && <span className="text-xs muted">· {fromNow(e.publishedAt)}</span>}
               </div>
+
+              {tab !== "archived" && (
+                <div className="mt-3">
+                  <SlotProgress accepted={e.acceptedCount || 0} needed={e.workersNeeded || 1} />
+                </div>
+              )}
 
               <div className="mt-4 pt-3 border-t flex items-end justify-between" style={{ borderColor: "var(--border)" }}>
                 <div>

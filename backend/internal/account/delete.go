@@ -274,5 +274,8 @@ func (h *Handler) softDelete(ctx context.Context, uid primitive.ObjectID) error 
 			"$set":   set,
 			"$unset": bson.M{"phone": "", "telegramId": ""},
 		})
+	// O'chirilgan hisobga push ketmasligi uchun qurilma tokenlari ham ketadi
+	// (masalan, keyinroq yuboriladigan broadcast'lar). Best-effort.
+	_, _ = h.users.Database().Collection("device_tokens").DeleteMany(ctx, bson.M{"userId": uid})
 	return err
 }

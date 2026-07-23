@@ -11,6 +11,7 @@ import { api, Elon, getAccess, GENDER_LABEL } from "@/lib/api";
 import { Modal } from "@/components/Modal";
 import { ShareModal } from "@/components/ShareModal";
 import { MapView } from "@/components/ui/MapView";
+import { SlotProgress } from "@/components/ui/SlotProgress";
 import { Avatar } from "@/components/ui/Avatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Shell } from "@/components/Shell";
@@ -111,6 +112,9 @@ export default function ElonDetails() {
             <KV icon={<Users size={18} />} label="ISHCHILAR SONI" value={`${e.workersNeeded} kishi`} />
             <KV icon={<Users size={18} />} label="KIMLAR KERAK" value={GENDER_LABEL[e.gender || "mixed"]} />
             <KV icon={<Calendar size={18} />} label="SANA VA VAQT" value={dateLine} />
+          </div>
+          <div className="mt-4">
+            <SlotProgress accepted={e.acceptedCount || 0} needed={e.workersNeeded || 1} />
           </div>
         </section>
 

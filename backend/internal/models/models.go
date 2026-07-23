@@ -212,6 +212,18 @@ type RelatedEntity struct {
 	ID   primitive.ObjectID `bson:"id" json:"id"`
 }
 
+// DeviceToken — mobil qurilmaning FCM push tokeni. Bitta token har doim bitta
+// foydalanuvchiga tegishli: qurilmada akkaunt almashsa, token yangi egasiga
+// ko'chiriladi (internal/push.Handler.Register upsert'i).
+type DeviceToken struct {
+	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	UserID    primitive.ObjectID `bson:"userId" json:"userId"`
+	Token     string             `bson:"token" json:"token"`
+	Platform  string             `bson:"platform" json:"platform"` // android|ios
+	CreatedAt time.Time          `bson:"createdAt" json:"createdAt"`
+	UpdatedAt time.Time          `bson:"updatedAt" json:"updatedAt"`
+}
+
 // Report
 type Report struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
