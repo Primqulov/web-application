@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ishchibormi/backend/pkg/httpx"
 	"github.com/ishchibormi/backend/pkg/storage"
@@ -193,11 +194,18 @@ func sanitize(s string) string {
 	return b.String()
 }
 
-// Helper for other domains: silently best-effort delete by URL.
+// Helper for other domains: best-effort delete by URL.
 // Use this in user/elon delete paths so storage stays in sync with Mongo.
+// Ko'p chaqiruv joylari buni `go`-bilan uzib yuboradi — shu sabab muddat shu
+// yerda chegaralanadi (S3 qotib qolsa goroutine abadiy osilib qolmasin) va
+// xato jim yutilmay log qilinadi (fayl storage'da yetim qolganini bilish uchun).
 func DeleteByURL(s *storage.Service, url string) {
 	if s == nil || url == "" {
 		return
 	}
-	_ = s.DeleteByURL(context.Background(), url)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := s.DeleteByURL(ctx, url); err != nil {
+		log.Printf("upload: delete by url failed (orphaned file?) url=%s err=%v", url, err)
+	}
 }

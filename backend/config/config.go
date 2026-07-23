@@ -26,7 +26,6 @@ type Config struct {
 	JWTRefreshTTL    time.Duration
 
 	CORSOrigins []string
-	AvatarDir   string
 
 	AdminSeedUser string
 	AdminSeedPass string
@@ -147,7 +146,6 @@ func Load() Config {
 		JWTAccessTTL:    time.Duration(envInt("JWT_ACCESS_TTL_MIN", 4320)) * time.Minute,
 		JWTRefreshTTL:   time.Duration(envInt("JWT_REFRESH_TTL_HRS", 720)) * time.Hour,
 		CORSOrigins:     strings.Split(envStr("CORS_ORIGINS", "http://localhost:3000"), ","),
-		AvatarDir:       envStr("AVATAR_DIR", "./data/avatars"),
 		AdminSeedUser:   envStr("ADMIN_SEED_USER", "admin"),
 		AdminSeedPass:   envStr("ADMIN_SEED_PASS", "Admin123!"),
 		BotSharedSecret: envStr("BOT_SHARED_SECRET", "dev-shared"),

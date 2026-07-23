@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -33,12 +35,22 @@ func main() {
 	otpTTL := time.Duration(envInt("OTP_TTL_SECONDS", 180)) * time.Second
 	otpLen := envInt("OTP_LENGTH", 6)
 
-	ctx := context.Background()
+	// SIGINT/SIGTERM (docker compose stop) kelganda ctx bekor bo'ladi — quyida
+	// updates kanali yopilib, sikl tugaydi va Mongo ulanishi toza uziladi.
+	// Aks holda konteyner 10s kutib SIGKILL bilan o'lardi, yozuvlar chala qolardi.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	mc, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
 	if err != nil {
 		log.Fatalf("mongo: %v", err)
 	}
-	defer func() { _ = mc.Disconnect(ctx) }()
+	defer func() {
+		// ctx bu paytda bekor bo'lgan bo'lishi mumkin — uzish uchun yangi muddat.
+		dctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = mc.Disconnect(dctx)
+	}()
 
 	// mongo.Connect is lazy — it doesn't actually reach the server. Ping now so a
 	// misconfigured/unreachable MONGO_URI fails loudly at startup instead of every
@@ -65,6 +77,11 @@ func main() {
 	upd := tgbotapi.NewUpdate(0)
 	upd.Timeout = 30
 	updates := bot.GetUpdatesChan(upd)
+	go func() {
+		<-ctx.Done()
+		log.Println("shutdown signal — stopping updates")
+		bot.StopReceivingUpdates() // updates kanalini yopadi, quyidagi for tugaydi
+	}()
 	for u := range updates {
 		if u.Message == nil {
 			continue
@@ -195,13 +212,19 @@ func normalizePhone(p string) string {
 
 func randDigits(n int) (string, error) {
 	const digits = "0123456789"
-	b := make([]byte, n)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
 	out := make([]byte, n)
-	for i, x := range b {
-		out[i] = digits[int(x)%len(digits)]
+	b := make([]byte, 1)
+	for i := 0; i < n; {
+		if _, err := rand.Read(b); err != nil {
+			return "", err
+		}
+		// Rejection sampling: 250..255 tashlab yuboriladi, aks holda 256%10=6
+		// tufayli 0-5 raqamlari boshqalardan tez-tezroq chiqardi (modulo bias).
+		if b[0] >= 250 {
+			continue
+		}
+		out[i] = digits[int(b[0])%10]
+		i++
 	}
 	return string(out), nil
 }

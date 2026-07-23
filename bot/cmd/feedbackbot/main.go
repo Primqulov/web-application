@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -99,12 +101,21 @@ func main() {
 		log.Fatal("SUPPORT_ADMIN_PHONE required (.env da o'rnating)")
 	}
 
-	ctx := context.Background()
+	// SIGINT/SIGTERM (docker compose stop) da ctx bekor bo'ladi: ikkala botning
+	// updates kanali yopiladi, sikllar tugaydi, Mongo toza uziladi. Aks holda
+	// konteyner 10s dan keyin SIGKILL olardi.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	mc, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
 	if err != nil {
 		log.Fatalf("mongo: %v", err)
 	}
-	defer func() { _ = mc.Disconnect(ctx) }()
+	defer func() {
+		dctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = mc.Disconnect(dctx)
+	}()
 	db := mc.Database(dbName)
 
 	ub, err := tgbotapi.NewBotAPI(userToken)
@@ -128,6 +139,13 @@ func main() {
 		replyTo:          map[int64]primitive.ObjectID{},
 	}
 
+	go func() {
+		<-ctx.Done()
+		log.Println("shutdown signal — stopping updates")
+		ub.StopReceivingUpdates()
+		ab.StopReceivingUpdates()
+	}()
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() { defer wg.Done(); a.runUserBot(ctx) }()
@@ -141,12 +159,16 @@ func (a *app) runUserBot(ctx context.Context) {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 30
 	for upd := range a.userBot.GetUpdatesChan(u) {
+		// Har bir update chegaralangan muddatda ishlanadi: Mongo qotib qolsa
+		// bot butun navbatni ushlab qolmasin.
+		octx, cancel := context.WithTimeout(ctx, 15*time.Second)
 		switch {
 		case upd.CallbackQuery != nil:
-			a.userCallback(ctx, upd.CallbackQuery)
+			a.userCallback(octx, upd.CallbackQuery)
 		case upd.Message != nil:
-			a.userMessage(ctx, upd.Message)
+			a.userMessage(octx, upd.Message)
 		}
+		cancel()
 	}
 }
 
@@ -319,12 +341,14 @@ func (a *app) runAdminBot(ctx context.Context) {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 30
 	for upd := range a.adminBot.GetUpdatesChan(u) {
+		octx, cancel := context.WithTimeout(ctx, 15*time.Second)
 		switch {
 		case upd.CallbackQuery != nil:
-			a.adminCallback(ctx, upd.CallbackQuery)
+			a.adminCallback(octx, upd.CallbackQuery)
 		case upd.Message != nil:
-			a.adminMessage(ctx, upd.Message)
+			a.adminMessage(octx, upd.Message)
 		}
+		cancel()
 	}
 }
 

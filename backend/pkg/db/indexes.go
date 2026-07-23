@@ -32,6 +32,11 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 		{"applications", mongo.IndexModel{Keys: bson.D{{Key: "elonId", Value: 1}, {Key: "status", Value: 1}}}},
 		{"applications", mongo.IndexModel{Keys: bson.D{{Key: "employerId", Value: 1}, {Key: "status", Value: 1}}}},
 		{"applications", mongo.IndexModel{Keys: bson.D{{Key: "elonId", Value: 1}, {Key: "workerId", Value: 1}}, Options: options.Index().SetUnique(true)}},
+		// MyApplications/MyElonsApplications/History appliedAt bo'yicha sortlaydi;
+		// History'ning $or filtri uchun Mongo har bir tarmoqqa alohida indeks
+		// ishlatadi — appliedAt shu tarmoqlarda bo'lmasa sort xotirada bajariladi.
+		{"applications", mongo.IndexModel{Keys: bson.D{{Key: "workerId", Value: 1}, {Key: "appliedAt", Value: -1}}}},
+		{"applications", mongo.IndexModel{Keys: bson.D{{Key: "employerId", Value: 1}, {Key: "appliedAt", Value: -1}}}},
 
 		{"categories", mongo.IndexModel{Keys: bson.D{{Key: "slug", Value: 1}}, Options: options.Index().SetUnique(true)}},
 
@@ -52,6 +57,18 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 		// Account-deletion codes: one live code per user, TTL-reaped on expiry.
 		{"delete_codes", mongo.IndexModel{Keys: bson.D{{Key: "expiresAt", Value: 1}}, Options: options.Index().SetExpireAfterSeconds(0)}},
 		{"delete_codes", mongo.IndexModel{Keys: bson.D{{Key: "userId", Value: 1}}, Options: options.Index().SetUnique(true)}},
+
+		// Ilova ichidagi fikr-mulohaza: foydalanuvchi o'z tarixini, admin butun
+		// ro'yxatni createdAt bo'yicha teskari sortda oladi.
+		{"feedback", mongo.IndexModel{Keys: bson.D{{Key: "userId", Value: 1}, {Key: "createdAt", Value: -1}}}},
+		{"feedback", mongo.IndexModel{Keys: bson.D{{Key: "createdAt", Value: -1}}}},
+
+		// Telegram feedback-botlari (bot moduli ham shu bazani ishlatadi, lekin
+		// indekslarni faqat backend boot'i yaratadi): ochiq murojaatlar navbati
+		// status+createdAt bo'yicha o'qiladi; admin ro'yxatga chatId bilan
+		// upsert qilinadi — dublikat admin yozuvi bo'lmasin.
+		{"bot_feedback", mongo.IndexModel{Keys: bson.D{{Key: "status", Value: 1}, {Key: "createdAt", Value: 1}}}},
+		{"support_admins", mongo.IndexModel{Keys: bson.D{{Key: "chatId", Value: 1}}, Options: options.Index().SetUnique(true)}},
 	}
 	for _, s := range specs {
 		if _, err := db.Collection(s.coll).Indexes().CreateOne(ctx, s.idx); err != nil {

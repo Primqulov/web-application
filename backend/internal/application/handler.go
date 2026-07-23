@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -466,10 +467,29 @@ func (h *Handler) ConfirmDone(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, 200, map[string]string{"status": "awaiting_other"})
 }
 
+// pageOpts — ixtiyoriy limit/page query paramlaridan Find opsiyalari. Javob
+// shakli o'zgarmasligi uchun (klientlar oddiy massiv kutadi) paginatsiya
+// metadata qaytarilmaydi: param bermagan eski klientlar defaultLimit tagacha
+// yozuvni avvalgidek oladi — ilgari bu ro'yxatlar umuman cheksiz edi.
+func pageOpts(r *http.Request, defaultLimit, maxLimit int) *options.FindOptions {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 || limit > maxLimit {
+		limit = defaultLimit
+	}
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	return options.Find().
+		SetSort(bson.D{{Key: "appliedAt", Value: -1}}).
+		SetSkip(int64((page - 1) * limit)).
+		SetLimit(int64(limit))
+}
+
 // MyApplications: applications I made as worker.
 func (h *Handler) MyApplications(w http.ResponseWriter, r *http.Request) {
 	uid, _ := primitive.ObjectIDFromHex(httpx.UserID(r))
-	cur, err := h.Apps.Find(r.Context(), bson.M{"workerId": uid}, options.Find().SetSort(bson.D{{Key: "appliedAt", Value: -1}}))
+	cur, err := h.Apps.Find(r.Context(), bson.M{"workerId": uid}, pageOpts(r, 100, 200))
 	if err != nil {
 		httpx.Err(w, err)
 		return
@@ -496,7 +516,7 @@ func (h *Handler) MyElonsApplications(w http.ResponseWriter, r *http.Request) {
 	if !httpx.IsReviewActor(r.Context()) {
 		filter["isReviewData"] = bson.M{"$ne": true}
 	}
-	cur, err := h.Apps.Find(r.Context(), filter, options.Find().SetSort(bson.D{{Key: "appliedAt", Value: -1}}))
+	cur, err := h.Apps.Find(r.Context(), filter, pageOpts(r, 200, 500))
 	if err != nil {
 		httpx.Err(w, err)
 		return
@@ -524,7 +544,7 @@ func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 		"$or":    []bson.M{{"workerId": uid}, {"employerId": uid}},
 		"status": bson.M{"$in": []string{"completed", "cancelled", "rejected"}},
 	}
-	cur, err := h.Apps.Find(r.Context(), filter, options.Find().SetSort(bson.D{{Key: "appliedAt", Value: -1}}))
+	cur, err := h.Apps.Find(r.Context(), filter, pageOpts(r, 100, 200))
 	if err != nil {
 		httpx.Err(w, err)
 		return

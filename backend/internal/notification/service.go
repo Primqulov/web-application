@@ -2,7 +2,9 @@ package notification
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/ishchibormi/backend/internal/models"
@@ -59,6 +61,11 @@ func (s *Service) Push(ctx context.Context, userID primitive.ObjectID, typ, titl
 		if oid, ok := res.InsertedID.(primitive.ObjectID); ok {
 			n.ID = oid
 		}
+	} else {
+		// Best-effort bo'lib qoladi (chaqiruvchini yiqitmaymiz), lekin jim
+		// yutilmasin: insert yiqilsa foydalanuvchi bildirishnomani umuman
+		// ko'rmaydi — buni logsiz payqash iloji yo'q edi.
+		slog.Error("notification insert failed", "type", typ, "user", userID.Hex(), "err", err)
 	}
 	if s.Pusher != nil {
 		s.Pusher.PushUser(userID, "notification", n)
@@ -82,9 +89,22 @@ func (s *Service) recipientIsReviewAccount(ctx context.Context, userID primitive
 
 func (s *Service) List(w http.ResponseWriter, r *http.Request) {
 	uid, _ := primitive.ObjectIDFromHex(httpx.UserID(r))
+	// Ixtiyoriy limit/page. Paramsiz eski klientlar avvalgidek eng yangi 200
+	// tasini oladi (javob shakli o'zgarmagan — oddiy massiv).
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 || limit > 200 {
+		limit = 200
+	}
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
 	cur, err := s.Col.Find(r.Context(),
 		bson.M{"userId": uid},
-		options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}}).SetLimit(200))
+		options.Find().
+			SetSort(bson.D{{Key: "createdAt", Value: -1}}).
+			SetSkip(int64((page-1)*limit)).
+			SetLimit(int64(limit)))
 	if err != nil {
 		httpx.Err(w, err)
 		return
@@ -102,7 +122,9 @@ func (s *Service) List(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) ReadAll(w http.ResponseWriter, r *http.Request) {
 	uid, _ := primitive.ObjectIDFromHex(httpx.UserID(r))
-	_, _ = s.Col.UpdateMany(r.Context(), bson.M{"userId": uid, "isRead": false}, bson.M{"$set": bson.M{"isRead": true}})
+	if _, err := s.Col.UpdateMany(r.Context(), bson.M{"userId": uid, "isRead": false}, bson.M{"$set": bson.M{"isRead": true}}); err != nil {
+		slog.Error("notification readAll failed", "user", uid.Hex(), "err", err)
+	}
 	httpx.JSON(w, 200, map[string]bool{"ok": true})
 }
 
@@ -139,6 +161,8 @@ func (s *Service) Read(w http.ResponseWriter, r *http.Request) {
 		httpx.Err(w, httpx.NewError(400, "bad_request", "relatedIds yoki relatedType kerak"))
 		return
 	}
-	_, _ = s.Col.UpdateMany(r.Context(), filter, bson.M{"$set": bson.M{"isRead": true}})
+	if _, err := s.Col.UpdateMany(r.Context(), filter, bson.M{"$set": bson.M{"isRead": true}}); err != nil {
+		slog.Error("notification read failed", "user", uid.Hex(), "err", err)
+	}
 	httpx.JSON(w, 200, map[string]bool{"ok": true})
 }

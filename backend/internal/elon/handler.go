@@ -30,16 +30,33 @@ type Handler struct {
 	Applications *mongo.Collection
 	Storage      *storage.Service
 	Notify       *notification.Service
+
+	// viewBumps — Get'dagi ko'rishlar hisobini oshirish navbati. Ilgari har bir
+	// GET alohida goroutine ochardi (katta trafikda chegarasiz goroutine); endi
+	// bitta worker kanaldan o'qib bajaradi. Kanal to'lsa hisob tashlab yuboriladi
+	// — viewsCount statistik ko'rsatkich, so'rovni sekinlatishga arzimaydi.
+	viewBumps chan primitive.ObjectID
 }
 
 func NewHandler(db *mongo.Database, s *storage.Service, n *notification.Service) *Handler {
-	return &Handler{
+	h := &Handler{
 		Col:          db.Collection("elons"),
 		Categories:   db.Collection("categories"),
 		Users:        db.Collection("users"),
 		Applications: db.Collection("applications"),
 		Storage:      s,
 		Notify:       n,
+		viewBumps:    make(chan primitive.ObjectID, 256),
+	}
+	go h.viewBumpWorker()
+	return h
+}
+
+func (h *Handler) viewBumpWorker() {
+	for id := range h.viewBumps {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_, _ = h.Col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$inc": bson.M{"viewsCount": 1}})
+		cancel()
 	}
 }
 
@@ -197,10 +214,11 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		httpx.Err(w, httpx.NewError(404, "not_found", "elon not found"))
 		return
 	}
-	// bump view count async
-	go func() {
-		_, _ = h.Col.UpdateOne(context.Background(), bson.M{"_id": id}, bson.M{"$inc": bson.M{"viewsCount": 1}})
-	}()
+	// bump view count async (worker navbati orqali; to'lsa — tashlanadi)
+	select {
+	case h.viewBumps <- id:
+	default:
+	}
 	list := []models.Elon{e}
 	h.liveOwnerAvatars(r.Context(), list)
 	httpx.JSON(w, 200, list[0])

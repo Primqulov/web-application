@@ -195,7 +195,10 @@ type Application struct {
 	IsReviewData bool `bson:"isReviewData,omitempty" json:"-"`
 }
 
-// Review
+// Eslatma: User'dagi WorkerRating/EmployerRating/ReviewsCount maydonlari
+// kelajakdagi "sharh va baho" funksiyasi uchun ajratilgan — hozircha ularni
+// to'ldiradigan endpoint YO'Q (hech qayerda yozilmaydi, doim 0 turadi).
+
 // Notification
 type Notification struct {
 	ID            primitive.ObjectID `bson:"_id,omitempty" json:"id"`
